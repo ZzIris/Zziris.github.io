@@ -55,7 +55,7 @@ $ sudo echo "{username} ALL = (root) NOPASSWD:ALL" | sudo tee /etc/sudoers.d/{us
 $ sudo chmod 0440 /etc/sudoers.d/{username}
 ```
 
-###设置部署机与其余集群节点的ssh连接
+###设置部署机与其余集群节点的免密ssh连接
 &emsp;&emsp;通过部署机对其余集群节点进行部署需要让部署机与其余节点进行连接，因此需要用到ssh连接，我们需要在部署机上生成ssh密钥,输入命令后一直回车就好。
 ```
 $ ssh-keygen
@@ -94,7 +94,7 @@ Host ceph3
    Hostname cpnode3
    User node3
 ```
-修改完以上文件后，你就可以直接以如下形式进行ssh连接了，方便了许多。
+修改完以上文件后，你就可以直接以如下形式进行ssh连接且需要再输入用户密码，方便了许多。
 ```
 $ ssh ceph1
 $ ssh ceph2
@@ -123,8 +123,7 @@ $ sudo setenforce 0
 &emsp;&emsp;这样便可以关闭firewall和selinux了。
 
 ### 安装Ceph
-&emsp;&emsp;在这里我们打算使用13.2.5版本的Ceph，由于在写这篇文章时mimic大版本的ceph最新已经是13.2.6，于是这里就涉及到了指定版本的安装。在这里我们介绍两种安装方式：1.直接通过外网镜像源安装。2.通过自己搭建本地源进行安装。
-
+&emsp;&emsp;在这里我们打算使用13.2.5版本的Ceph，由于在写这篇文章时mimic大版本的ceph最新已经是13.2.6，于是这里就涉及到了指定版本的安装。在这里我们介绍两种安装方式：1.直接通过外网镜像源安装。2.通过自己搭建本地源进行安装。（注：再官方给出的文档中是通过ceph-deploy install来进行自动安装ceph，但该种安装方式存在多种弊端，如指定版本或指定下载源比较麻烦等，因此比较推荐在每个集群节点上直接使用yum来安装。）
 
 #### 方式一：通过外网镜像源安装
 &emsp;&emsp;这种方式的优点是操作步骤较为简单，但缺点是受外网镜像源的影响，安装速度慢且有时候会发生寻找不到有效源。该方式只需要在集群机上进行，无需在部署机上进行。
@@ -305,3 +304,103 @@ $ sudo mv /etc/yum.repo.d/backup/ceph.repo /etc/yum.repo.d/   #将已创建的ce
 $ sudo yum install ceph ceph-radosgw -y
 ```
 注意：如果在httpd共享文件后，别的主机无法访问到你所搭建的仓库，则有可能是firewall服务或者selinux服务没关，导致搭建源的主机拒绝任何访问从而无法共享文件，此时应查看相应的两个服务是否关掉，如果这两个服务都关掉了还是无法访问则需查看搭建源的每一级目录是否有执行权限，如果没有执行权限也会导致无法访问路径下的内容。
+
+&emsp;&emsp;通过以上步骤，我们就完成了搭建Ceph集群的准备工作，接下来便进入正式部署集群阶段。
+
+## 2. 部署Ceph集群
+
+&emsp;&emsp;此部分的部署工作都在部署机上进行，涉及到ceph-deploy这一命令的都是在部署机上执行的，在该实验中，我的部署机上没有装ceph，单纯只为用于部署工作，当然也可以将部署机作为一个集群节点。
+
+### 新建部署所用目录
+&emsp;&emsp;首先在进行部署集群之前，我们在部署机的部署用户下创建一个用于存放部署文件的目录（目录名称任取）：
+```
+$ mkdir ~/my-cluster
+$ cd ~/my-cluster
+```
+
+### 创建monitor
+&emsp;&emsp;首先创建集群，初始化将要指定为monitor的节点,此处我先将node1和node2指定为初始化的monitor节点：
+```
+$ ceph-deploy new node1 node2
+```
+在执行完命令之后，你之前在部署机上所创建的所用于部署的目录下将新增以下几个文件：
+``` 
+ceph.conf  
+ceph-deploy-ceph.log  
+ceph.mon.keyring
+```
+&emsp;&emsp;接下来，我们需要创建前面已初始化好的monitor节点：
+```
+$ ceph-deploy mon create-initial
+```
+则所用于部署的目录下又再新增了几个文件：
+```
+ceph.bootstrap-mds.keyring                 ceph.client.admin.keyring
+ceph.bootstrap-mgr.keyring                 
+ceph.bootstrap-osd.keyring 
+ceph.bootstrap-rgw.keyring
+```
+
+### 分发命令权限
+&emsp;&emsp;然后我们将为我们想要其能执行ceph命令的节点分发admin.keyring:
+```
+$ ceph-deploy admin node1 node2
+```
+没有被分发admin.keyring的节点是无法使用ceph命令的，而这个admin.keyring的文件将出现再被分发节点的/etc/ceph目录下，再该目录下，还会看到与部署机一致的ceph.conf文件，在整个集群配置时，该文件都要保持一致，一旦部署机上的conf文件修改，都要推送覆盖到其余节点上，这样才能保证配置不会出错。
+&emsp;&emsp;在该命令执行完后，我们可以在任意一台本分发了admin.keyring的节点机输入以下命令测试一下：
+```
+$ sudo ceph -s
+```
+该命令可以查看集群的整体情况。
+
+### 创建mgr
+&emsp;&emsp;接下来再创建mgr:
+```
+$ ceph-deploy mgr create node1 node2
+```
+mgr可以在两三个节点上创建，但也没必要太多。
+
+### 创建osd
+&emsp;&emsp;最后我们便可以创建osd了，在这里需注意，创建使用lvm分区的osd和创建使用块设备的osd命令略有不同，而我的机子上使用的是lvm分区，所以命令如下：
+```
+$ ceph-deploy osd create --data vg1/lv1 node1
+$ ceph-deploy osd create --data vg2/lv2 node2
+```
+如果需要创建使用块设备的osd，则需要输入：
+```
+$ ceph-deploy osd create --data /dev/sdb node1
+$ ceph-deploy osd create --data /dev/sdc node2
+```
+可以看出，这两种方式在命令上不同的地方为--data后的形式不一样，在使用lvm分区的情况，格式为 卷组名/逻辑卷名，卷组名和逻辑卷名是在创建lvm分区时就已确定。
+
+### 查看集群部署情况
+&emsp;&emsp;在执行完创建osd的命令后，Ceph集群的几个基本组件就都部署好了，我们可以在集群节点上通过以下命令来查看当前的集群情况：
+```
+$ sudo ceph health
+```
+如以下命令执行完后出现：
+```
+HEALTH_OK
+```
+则表明集群状况良好。除此之外，我们还可以通过另一指令来查看更详细的集群情况：
+```
+$ sudo ceph -s
+```
+命令执行后将得到以下信息：
+```
+cluster:
+    id:     85313a2d-104f-4425-a033-7f17888f8021
+    health: HEALTH_OK
+ 
+  services:
+    mon: 2 daemons, quorum node3,node2
+    mgr: node2(active), standbys: node3
+    osd: 2 osds: 2 up, 2 in
+ 
+  data:
+    pools:   0 pools, 0 pgs
+    objects: 0  objects, 0 B
+    usage:   2.0 GiB used, 28 GiB / 30 GiB avail
+    pgs:  
+```
+在这里面我们将可以看到monitor的守护进程已存在，mgr已激活，osd也成功创建且状态都处于up和in，集群整体情况很健康。
