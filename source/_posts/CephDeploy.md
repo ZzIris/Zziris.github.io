@@ -404,3 +404,157 @@ cluster:
     pgs:  
 ```
 在这里面我们将可以看到monitor的守护进程已存在，mgr已激活，osd也成功创建且状态都处于up和in，集群整体情况很健康。
+
+## 3. 新增monitor节点：
+&emsp;&emsp;通过上述步骤我们知道，创建Ceph集群的第一步就是初始化需要指定为monitor的节点，而这里的新增monitor节点指的是没有经过第一步new过的节点，此时我们需要先修改ceph.conf文件，我们在部署机上进行修改，并把修改后的ceph.conf文件推送覆盖其他节点的ceph.conf文件，使它们的这个设置文件保持一致：
+```
+$ sudo vim ~/ceph.conf
+```
+修改的文件内容为：
+```
+[global]
+fsid = 85313a2d-104f-4425-a033-7f17888f8021
+mon_initial_members = node1, node2
+mon_host = 192.168.0.105,192.168.0.106
+auth_cluster_required = cephx
+auth_service_required = cephx
+auth_client_required = cephx
+
+public_network=192.168.0.0/24
+```
+此处public_network的设置要使得你所增加的monitor节点和已存在的节点的IP同处一个网段。
+然后增加你想要增加的monitor节点，此处我们将node3新增为monitor节点：
+```
+$ ceph-deploy mon add node3
+```
+这样一个新的monitor节点就添加完成了。
+
+## 4. 新增osd节点：
+&emsp;&emsp;新增osd节点比较简单，直接创建即可：
+```
+$ ceph-deploy osd create --data  vg3/lv1 node3
+```
+
+## 5. 删除osd节点：
+&emsp;&emsp;首先我们先明确需要剔除的osd节点是几号节点：
+```
+$ sudo ceph osd df tree
+```
+可以获得以下信息：
+```
+ID CLASS WEIGHT  REWEIGHT SIZE   USE     AVAIL   %USE  VAR  PGS TYPE NAME      
+-1       0.03908        - 40 GiB 3.0 GiB  37 GiB  7.52 1.00   - root default   
+-3       0.01949        - 20 GiB 1.0 GiB  19 GiB  5.02 0.67   -     host node1 
+ 0   hdd 0.01949  1.00000 20 GiB 1.0 GiB  19 GiB  5.02 0.67   0         osd.0  
+-5       0.00980        - 10 GiB 1.0 GiB 9.0 GiB 10.03 1.33   -     host node2 
+ 1   hdd 0.00980  1.00000 10 GiB 1.0 GiB 9.0 GiB 10.03 1.33   0         osd.1  
+-7       0.00980        - 10 GiB 1.0 GiB 9.0 GiB 10.03 1.33   -     host node3 
+ 2   hdd 0.00980  1.00000 10 GiB 1.0 GiB 9.0 GiB 10.03 1.33   0         osd.2  
+                    TOTAL 40 GiB 3.0 GiB  37 GiB  7.52 
+```
+可以看到主机名和在其上创建的osd编号，我们此处将删除node3上的osd.2，删除操作我们在相应的节点机上执行。
+&emsp;&emsp;我们先将需要删除的节点的权重置为0，然后将其踢出集群，接着停止该osd的服务，再然后从crush map中将其移除,再接着删除其的认证密钥，最后把其进行删除：
+```
+$ ceph osd crush reweight osd.2 0
+$ ceph osd out 2
+$ sudo systemctl stop ceph-osd@2
+$ sudo ceph osd crush remove osd.2
+$ sudo ceph auth del osd.2
+$ sudo ceph osd rm 2
+```
+
+# 三. 在搭建Ceph集群中碰到的一些情况
+
+&emsp;&emsp;由于自己是新手，在搭建Ceph集群的过程中也碰到了较多的麻烦与问题，因此，在这一部分内容中，将对自己在这一过程中碰到的一些问题与情况做一个总结与梳理，也让更多的人在碰到这样的问题时能够作为解决方法的参考。
+
+## 1. 时钟漂移问题：
+&emsp;&emsp;由于Cpeh集群是由多个主机来一起构建的，而每个主机都可能会存在时间差，这就会导致集群中不同节点之间存在时间漂移。有时候我们在查看Ceph集群状态时就会发现这个问题：
+```
+health: HEALTH_WARN
+            clock skew detected on mon.node2
+```
+&emsp;&emsp;因此这时候我们就需要依靠ntp服务来解决这个问题了，ntp全称为Network Time Protocol，ntp提供准确的网络时间源，我们打开该服务，并设置好网络时间源，且将所有节点的ntp都指向同一时间源即可解决时钟漂移问题。
+&emsp;&emsp;首先给所有集群节点安装ntp服务包并打开服务且设置为开机启动：
+```
+$ sudo yum install ntpd -y
+$ sudo systemctl start ntpd
+$ sudo systemctl enable ntpd
+```
+&emsp;&emsp;然后修改配置文件，我们在其中一个节点上设置网络时间源，我在我自己的node1节点上进行设置：
+```
+$ sudo vim /etc/ntp.conf
+```
+修改内容为：
+```
+#server 0.centos.pool.ntp.org iburst
+#server 1.centos.pool.ntp.org iburst
+#server 2.centos.pool.ntp.org iburst
+#server 3.centos.pool.ntp.org iburst
+
+server time1.aliyun.com minpoll 3 maxpoll 4 iburst
+server time2.aliyun.com minpoll 3 maxpoll 4 iburst
+server time3.aliyun.com minpoll 3 maxpoll 4 iburst
+
+```
+将原有的server部分注释掉，并使用阿里云的时间源。而我们在其他节点上的相同的文件内修改的内容为：
+```
+#server 0.centos.pool.ntp.org iburst
+#server 1.centos.pool.ntp.org iburst
+#server 2.centos.pool.ntp.org iburst
+#server 3.centos.pool.ntp.org iburst
+
+server node1 minpoll 3 maxpoll 4 iburst
+```
+同样也是将之前的server部分注释掉，但这里新增的语句是指向设置了网络时间源的节点，然后再事件源指向node1，最后重启一下ntp服务：
+```
+$ sudo systemctl restart ntpd
+```
+可能在所有ntp服务设置好之后，时钟漂移问题还会存在，这需要等待一小段时间，让时钟真正同步后才OK。
+
+## 2. monotor节点根目录占用量太高：
+&emsp;&emsp;有时候我们会看到这样一个Ceph集群状态健康警报：
+```
+health: HEALTH_WARN
+            mon node1 is low on available space monitor
+```
+&emsp;&emsp;该问题并不是由于monitor所在节点的osd的可用容量不足而是由于monitor所在的节点的根目录使用率太高了，剩余空间较小，因此解决方法是对根目录进行扩容，这样即可解决问题。
+
+## 3. osd usage为0：
+&emsp;&emsp;有时候我们发现会出现在以下情况，集群状态里提示我们没有激活的mgr，此时的data字段中，所有数字都显示为0，这正是由于我们没有jihuomgr所导致的。
+```
+  cluster:
+    id:     85313a2d-104f-4425-a033-7f17888f8021
+    health: HEALTH_WARN
+                no active mgr
+ 
+  services:
+    mon: 2 daemons, quorum node3,node2
+    mgr: no active mgr
+    osd: 2 osds: 2 up, 2 in
+ 
+  data:
+    pools:   0 pools, 0 pgs
+    objects: 0  objects, 0 B
+    usage:   0 GiB used, 0 GiB / 0 GiB avail
+    pgs: 
+```
+针对此情况，我们激活mgr就好，我们在部署机上输入以下命令，此处我们选择在node1上激活mgr：
+```
+$ ceph-deploy mgr create node1
+```
+## 4. 将删除过的osd所在的lvm分区重新来创建osd：
+&emsp;&emsp;如果我们想使用一个lvm分区来创建osd，在创建命令输入后报如下的错：
+```
+[node3][DEBUG ]  stderr: purged osd.1
+[node3][ERROR ] RuntimeError: command returned non-zero exit status: 1
+[ceph_deploy.osd][ERROR ] Failed to execute command: /usr/sbin/ceph-volume --cluster ceph lvm create --bluestore --data vg4/lv1
+[ceph_deploy][ERROR ] GenericError: Failed to create 1 OSDs
+```
+这是因为你所使用的这个lvm分区之前用来创建过osd，因此我们需要在重新创建osd之前做一个lvm分区的擦除操作：
+```
+sudo ceph-volume lvm zap volumename/logicalname
+```
+
+# 四. 末语
+
+&emsp;&emsp;作为一个新手，在整个搭建的过程中也是经历坎坷，以上都是自己在实验中一步一步尝试然后总结下来的，网上也有很多对应的教程，但教程都比较杂乱，有的教程给的命令甚至无法运行，大家在参考我的教程之时也可以多思考，是否我的这个教程是否适合你所使用的版本（Ceph版本甚至是Linux的版本）。并且我的总结也可能会存在一些疏漏之处，也希望有人能够将其指出，让我有更好的改正。
