@@ -178,7 +178,7 @@ $ sudo yum install createrepo -y
 
 &emsp;&emsp;由于需要在部署机上将ceph相关的rpm包下载下来，我们需要在部署机上的/etc/yum.repo.d/路径下添加ceph相关的.repo文件，步骤在方式一中已给出不再赘述。当.repo文件添加完后就进行下载，这里注意，我只需要将rpm包下载下来即可，不需要安装，因此命令为：
 ```
-$ sudo yum install --downloadonly --downloaddir=/mnt/myrepo/ceph/
+$ sudo yum install --downloadonly --downloaddir=/mnt/myrepo/ceph/ ceph-13.2.5 ceph-radosgw-13.2.5
 ```
 此处我将相关的包下载到/mnt/myrepo/ceph/路径下，这个路径根据自己喜好来进行即可。
 &emsp;&emsp;下载完毕后，我们将myrepo文件夹建立成仓库：
