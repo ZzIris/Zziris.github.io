@@ -3,7 +3,7 @@ title: Ceph集群搭建教程及一些学习搭建过程中遇到的相关操作
 date: 2019-07-23 21:19:14
 tags:
 - Ceph
-- 分布式集群
+- 分布式存储
 categories:
 - Ceph
 ---
@@ -55,13 +55,13 @@ $ sudo echo "{username} ALL = (root) NOPASSWD:ALL" | sudo tee /etc/sudoers.d/{us
 $ sudo chmod 0440 /etc/sudoers.d/{username}
 ```
 
-###设置部署机与其余集群节点的免密ssh连接
+### 设置部署机与其余集群节点的免密ssh连接
 &emsp;&emsp;通过部署机对其余集群节点进行部署需要让部署机与其余节点进行连接，因此需要用到ssh连接，我们需要在部署机上生成ssh密钥,输入命令后一直回车就好。
 ```
 $ ssh-keygen
 ```
 在执行命令后，将在我们的当前部署工作所在的用户家目录下的.ssh文件(其为隐藏文件)下生成一个id_rsa和id_rsa.pub两个文件，前者记录着私钥，后者记录着公钥，我们接下来需要将公钥拷贝到我们需要建立的集群节点机上。
-此处我将我的deploy节点上的公钥分别拷贝到node1,node2和node3上,于是在deploy上执行：
+&emsp;&emsp;此处我将我的deploy节点上的公钥分别拷贝到node1,node2和node3上,于是在deploy上执行：
 ```
 $ ssh-copy-id node1@192.168.0.105
 $ ssh-copy-id node2@192.168.0.106
@@ -335,7 +335,8 @@ $ ceph-deploy mon create-initial
 ```
 则所用于部署的目录下又再新增了几个文件：
 ```
-ceph.bootstrap-mds.keyring                 ceph.client.admin.keyring
+ceph.bootstrap-mds.keyring                 
+ceph.client.admin.keyring
 ceph.bootstrap-mgr.keyring                 
 ceph.bootstrap-osd.keyring 
 ceph.bootstrap-rgw.keyring
@@ -455,8 +456,8 @@ ID CLASS WEIGHT  REWEIGHT SIZE   USE     AVAIL   %USE  VAR  PGS TYPE NAME
 可以看到主机名和在其上创建的osd编号，我们此处将删除node3上的osd.2，删除操作我们在相应的节点机上执行。
 &emsp;&emsp;我们先将需要删除的节点的权重置为0，然后将其踢出集群，接着停止该osd的服务，再然后从crush map中将其移除,再接着删除其的认证密钥，最后把其进行删除：
 ```
-$ ceph osd crush reweight osd.2 0
-$ ceph osd out 2
+$ sudo ceph osd crush reweight osd.2 0
+$ sudo ceph osd out 2
 $ sudo systemctl stop ceph-osd@2
 $ sudo ceph osd crush remove osd.2
 $ sudo ceph auth del osd.2
@@ -520,7 +521,7 @@ health: HEALTH_WARN
 &emsp;&emsp;该问题并不是由于monitor所在节点的osd的可用容量不足而是由于monitor所在的节点的根目录使用率太高了，剩余空间较小，因此解决方法是对根目录进行扩容，这样即可解决问题。
 
 ## 3. osd usage为0：
-&emsp;&emsp;有时候我们发现会出现在以下情况，集群状态里提示我们没有激活的mgr，此时的data字段中，所有数字都显示为0，这正是由于我们没有jihuomgr所导致的。
+&emsp;&emsp;有时候我们发现会出现在以下情况，集群状态里提示我们没有激活的mgr，此时的data字段中，所有数字都显示为0，这正是由于我们没有激活mgr所导致的。
 ```
   cluster:
     id:     85313a2d-104f-4425-a033-7f17888f8021
