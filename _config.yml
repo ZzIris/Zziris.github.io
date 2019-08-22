@@ -81,3 +81,7 @@ deploy:
   type: git
   repo: git@github.com:ZzIris/zziris.github.io.git
   branch: master
+
+kramed:
+  gfm: true
+  breaks: false
