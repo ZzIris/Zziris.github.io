@@ -1,5 +1,5 @@
 ---
-title: Android开发中的NDK构建
+title: Android开发中使用ndk-build进行NDK构建
 date: 2019-08-26 16:50:36
 tags:
 - Android
@@ -52,6 +52,8 @@ javah -d jni -classpath ./java com.example.jnistaticregister.NDKHelper
 
 ![][5]
 
+&emsp;&emsp;实际上除了通过使用命令行的方式生成外，我们也可以手动编写头文件，只要按照JNI规则进行编写即可。
+
 ## 4.编写相应的C/C++函数实现
 
 &emsp;&emsp;有了头文件及相应的函数声明，就需要对函数进行定义，我们在jni目录下New一个C/C++的源文件，并进行函数实现编写：
@@ -94,9 +96,9 @@ APP_STL := c++_static
 
 APP_STL为标准库选择。
 
-&emsp;&emsp;在编写完.mk文件后就可以进行NDK构建了，此处有两种构建方式，一种为使用ndk-build进行构建，另一种为使用Cmake进行构建。
+&emsp;&emsp;在编写完.mk文件后就可以进行NDK构建了。
 
-### ndk-build进行构建
+### 使用ndk-build进行构建
 
 &emsp;&emsp;构建方式如图所示：
 
