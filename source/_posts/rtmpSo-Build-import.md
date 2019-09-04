@@ -217,7 +217,143 @@ include $(BUILD_SHARED_LIBRARY)
 
 # 三. 使用CMake方式封装rtmp动态库并进行调用
 
+&emsp;&emsp;在上一节中，我们使用了ndk-build的方式对rtmp进行了动态库封装以及调用，而本节将改用Cmake的方式来进行对rtmp动态库封装以及调用。
 
+## 1. 封装rtmp动态库-librtmp.so
+
+### 创建封装rtmp动态库的工程
+
+&emsp;&emsp;rtmp的源码我们在上一节中已经获取到了。我们新建一个名为RtmpCmakeTest的工程，不过注意的是，此时创建的工程和我们平时创建的工程不太一样，不再是选择xxx Activity，而是需要选择Native C++。
+
+![][14]
+
+&emsp;&emsp;在创建了这个工程后，进去后会发现，在我们平时的app/src/main路径下多了一个cpp的目录，且在该目录下还有一个CMakeLists.txt文件和IDE为我们自动生成的native-lib.cpp（这是一个IDE为我们自动生成的native样例，其Java层的native函数声明在MainActivity类中）。然后我们在该cpp目录下创建两个目录分别为include和src，分别用来存放rtmp的头文件和源文件。
+
+![][15]
+
+&emsp;&emsp;接着我们修改CMakeLists.txt文件，内容为：
+```
+cmake_minimum_required(VERSION 3.4.1)
+
+add_library( # Sets the name of the library.
+             rtmp
+
+             # Sets the library as a shared library.
+             SHARED
+
+             # Provides a relative path to your source file(s).
+             src/rtmp.c src/parseurl.c src/log.c src/hashswf.c src/amf.c)
+
+target_include_directories(rtmp PRIVATE
+        ${CMAKE_SOURCE_DIR}/include)
+
+
+find_library( # Sets the name of the path variable.
+              log-lib
+
+              # Specifies the name of the NDK library that
+              # you want CMake to locate.
+              log )
+
+#target_link_libraries( # Specifies the target library.
+#                       native-lib
+
+                       # Links the target library to the log library
+                       # included in the NDK.
+#                       ${log-lib} )
+```
+
+由于我们是生成不满足JNI规范的.so文件，并非直接供给Java层调用的.so，因此我们将最后一部分target_link_libraries的内容注释掉。
+
+&emsp;&emsp;此时我们同样不需要openssl，所以还是需要对rtmp_sys.h进行处理，处理方式如上一节所述。
+
+&emsp;&emsp;接着，我们点击Make Project即可，这样就可以生成相应的librtmp.so了。
+
+## 2. 调用librtmp.so
+
+&emsp;&emsp;我们重新创建一个工程并命名为RtmpUseCmakeTest，此处使用的同样是native C++工程，然后我们在cpp目录下创建两个文件夹分别为include和libs，一个用来存放rtmp的头文件，另一个用来存放我们前面生成的.so文件。
+
+![][16]
+
+此处我将ABI为x86_64的librtmp.so文件移到了libs目录下，注意要同时带有x86_64的文件夹（IDE进行了优化，将目录整合成了libs.x86_64）
+
+&emsp;&emsp;然后我们修改CMakeLists.txt文件，内容为：
+```
+cmake_minimum_required(VERSION 3.4.1)
+set(LIB_DIR ${CMAKE_SOURCE_DIR}/libs)
+
+add_library( # Sets the name of the library.
+        native-lib
+
+        # Sets the library as a shared library.
+        SHARED
+
+        # Provides a relative path to your source file(s).
+        native-lib.cpp)
+
+target_include_directories(native-lib PRIVATE
+        ${CMAKE_SOURCE_DIR}/include)
+
+add_library(rtmp SHARED IMPORTED)
+set_target_properties(rtmp
+        PROPERTIES IMPORTED_LOCATION
+        ${LIB_DIR}/${ANDROID_ABI}/librtmp.so)
+
+find_library( # Sets the name of the path variable.
+        log-lib
+
+        # Specifies the name of the NDK library that
+        # you want CMake to locate.
+        log)
+
+target_link_libraries( # Specifies the target library.
+        native-lib
+        rtmp
+        # Links the target library to the log library
+        # included in the NDK.
+        ${log-lib})
+```
+
+此处由于我们是要在符合JNI规范的native-lib.cpp中调用我们不符合JNI规范的librtmp.so，因此我们增加了第二个add_library，并且第一个参数指定了需要调用的动态库的名称，第三个参数指定为IMPORTED，同时设置了set_target_properties，指出了librtmp.so的路径（文件前面调用set设置了LIB_DIR的值），最后在target_link_libraries中给出需要link的所有动态库的名称。
+
+&emsp;&emsp;在修改完CMakeLists.txt文件，我们对native-lib.cpp修改一下，让其调用相关的rtmp的函数，内容如下：
+
+```
+//native-lib.cpp
+
+#include <jni.h>
+#include <string>
+#include "rtmp_sys.h"   //引入rtmp头文件
+
+extern "C" JNIEXPORT jstring JNICALL
+Java_com_example_rtmpusecmaketest_MainActivity_stringFromJNI(
+        JNIEnv *env,
+        jobject /* this */) {
+    std::string hello = "RTMP Cmake Test";
+    RTMP *rtmp = RTMP_Alloc();   //调用rtmp的函数
+    RTMP_Init(rtmp);   //调用rtmp的函数
+
+    return env->NewStringUTF(hello.c_str());
+}
+```
+
+由于在MainActivity中已经帮我们调用了声明的native函数，所以我们不需要修改
+
+&emsp;&emsp;而为了避免出现上一节中Make Project会编译全部ABI类型的.so文件（我们只导入了x86_64的动态库文件）导致Make Project不通过而Run能通过的情况，我们需要在build.gradle中指定一下ABI，如下所示：
+
+![][17]
+
+&emsp;&emsp;然后我们点击Make Project，发现通过了，然后点击Run，这时候问题来了，发生了报错，报错内容如下：
+
+![][18]
+
+&emsp;&emsp;问题是找不到librtmp.so这个动态库文件，后来经过一系列的折腾及网上答案的查找后发现，在运行程序之前还需要在build.gradle中指定要调用的动态库的路径，这针对的是这种不放在默认目录下而是放在自定义位置的动态库文件。我们修改build.gradle文件，增加的部分如图所示：
+
+![][19]
+
+其中jniLibs.srcDirs的默认路径为app/libs，将其改为我们自定义存放动态库文件的目录路径即可。
+
+&emsp;&emsp;以上设置完成点击Run,即可运行成功。
 
 # 四. 末言
 
@@ -236,3 +372,9 @@ include $(BUILD_SHARED_LIBRARY)
 [11]: /images/rtmp_build_import/11.png "图11"
 [12]: /images/rtmp_build_import/12.png "图12"
 [13]: /images/rtmp_build_import/13.png "图13"
+[14]: /images/rtmp_build_import/14.png "图14"
+[15]: /images/rtmp_build_import/15.png "图15"
+[16]: /images/rtmp_build_import/16.png "图16"
+[17]: /images/rtmp_build_import/17.png "图17"
+[18]: /images/rtmp_build_import/18.png "图18"
+[19]: /images/rtmp_build_import/19.png "图19"
