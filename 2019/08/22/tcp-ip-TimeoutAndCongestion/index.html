@@ -1,0 +1,930 @@
+<!DOCTYPE html>
+
+
+
+  
+
+
+<html class="theme-next muse use-motion" lang="zh-Hans">
+<head><meta name="generator" content="Hexo 3.9.0">
+  <meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<meta name="theme-color" content="#222">
+
+
+
+
+
+
+
+
+
+<meta http-equiv="Cache-Control" content="no-transform">
+<meta http-equiv="Cache-Control" content="no-siteapp">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+  <link href="/lib/fancybox/source/jquery.fancybox.css?v=2.1.5" rel="stylesheet" type="text/css">
+
+
+
+
+  
+  
+  
+  
+
+  
+    
+    
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+    
+    
+    <link href="//fonts.googleapis.com/css?family=Lato:300,300italic,400,400italic,700,700italic&subset=latin,latin-ext" rel="stylesheet" type="text/css">
+  
+
+
+
+
+
+
+<link href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2" rel="stylesheet" type="text/css">
+
+<link href="/css/main.css?v=5.1.4" rel="stylesheet" type="text/css">
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png?v=5.1.4">
+
+
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png?v=5.1.4">
+
+
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png?v=5.1.4">
+
+
+  <link rel="mask-icon" href="/images/logo.svg?v=5.1.4" color="#222">
+
+
+
+
+
+  <meta name="keywords" content="TCP/IP,">
+
+
+
+
+
+
+
+
+
+
+<meta name="description" content="一. 前言&amp;emsp;&amp;emsp;在TCP的传输过程中，由于网络情况的原因，如网络堵塞、数据包绕道从而会导致发送的数据包丢失，而为了保证传输的可靠性，即发送端发送的每一个报文段接收方都能接收到，TCP采取了一系列的处理措施来保证网络的顺畅与解决数据包丢失的问题，这些措施包括超时重传、慢启动、拥塞避免以及快重传与快恢复。 二. TCP保证传输可靠性的措施1. 超时重传机制&amp;emsp;&amp;emsp;由于">
+<meta name="keywords" content="TCP&#x2F;IP">
+<meta property="og:type" content="article">
+<meta property="og:title" content="TCP的超时与拥塞">
+<meta property="og:url" content="http://ZzIris.github.io/2019/08/22/tcp-ip-TimeoutAndCongestion/index.html">
+<meta property="og:site_name" content="Ching">
+<meta property="og:description" content="一. 前言&amp;emsp;&amp;emsp;在TCP的传输过程中，由于网络情况的原因，如网络堵塞、数据包绕道从而会导致发送的数据包丢失，而为了保证传输的可靠性，即发送端发送的每一个报文段接收方都能接收到，TCP采取了一系列的处理措施来保证网络的顺畅与解决数据包丢失的问题，这些措施包括超时重传、慢启动、拥塞避免以及快重传与快恢复。 二. TCP保证传输可靠性的措施1. 超时重传机制&amp;emsp;&amp;emsp;由于">
+<meta property="og:locale" content="zh-Hans">
+<meta property="og:image" content="http://zziris.github.io/images/tcp_ip_TimeoutAndCongestion/1.png">
+<meta property="og:image" content="http://zziris.github.io/images/tcp_ip_TimeoutAndCongestion/2.png">
+<meta property="og:image" content="http://zziris.github.io/images/tcp_ip_TimeoutAndCongestion/3.png">
+<meta property="og:image" content="http://zziris.github.io/images/tcp_ip_TimeoutAndCongestion/4.png">
+<meta property="og:image" content="http://zziris.github.io/images/tcp_ip_TimeoutAndCongestion/5.png">
+<meta property="og:image" content="http://zziris.github.io/images/tcp_ip_TimeoutAndCongestion/6.png">
+<meta property="og:image" content="http://zziris.github.io/images/tcp_ip_TimeoutAndCongestion/7.png">
+<meta property="og:image" content="http://zziris.github.io/images/tcp_ip_TimeoutAndCongestion/8.png">
+<meta property="og:image" content="http://zziris.github.io/images/tcp_ip_TimeoutAndCongestion/9.png">
+<meta property="og:image" content="http://zziris.github.io/images/tcp_ip_TimeoutAndCongestion/10.png">
+<meta property="og:image" content="http://zziris.github.io/images/tcp_ip_TimeoutAndCongestion/11.png">
+<meta property="og:updated_time" content="2021-05-20T14:52:23.138Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="TCP的超时与拥塞">
+<meta name="twitter:description" content="一. 前言&amp;emsp;&amp;emsp;在TCP的传输过程中，由于网络情况的原因，如网络堵塞、数据包绕道从而会导致发送的数据包丢失，而为了保证传输的可靠性，即发送端发送的每一个报文段接收方都能接收到，TCP采取了一系列的处理措施来保证网络的顺畅与解决数据包丢失的问题，这些措施包括超时重传、慢启动、拥塞避免以及快重传与快恢复。 二. TCP保证传输可靠性的措施1. 超时重传机制&amp;emsp;&amp;emsp;由于">
+<meta name="twitter:image" content="http://zziris.github.io/images/tcp_ip_TimeoutAndCongestion/1.png">
+
+
+
+<script type="text/javascript" id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Muse',
+    version: '5.1.4',
+    sidebar: {"position":"left","display":"post","offset":12,"b2t":false,"scrollpercent":false,"onmobile":false},
+    fancybox: true,
+    tabs: true,
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    duoshuo: {
+      userId: '0',
+      author: '博主'
+    },
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    }
+  };
+</script>
+
+
+
+  <link rel="canonical" href="http://ZzIris.github.io/2019/08/22/tcp-ip-TimeoutAndCongestion/">
+
+
+
+
+
+  <title>TCP的超时与拥塞 | Ching</title>
+  
+
+
+
+
+
+  <script type="text/javascript">
+    var _hmt = _hmt || [];
+    (function() {
+      var hm = document.createElement("script");
+      hm.src = "https://hm.baidu.com/hm.js?3ef8bbb3049eedc7533c61fb79f60f5f";
+      var s = document.getElementsByTagName("script")[0];
+      s.parentNode.insertBefore(hm, s);
+    })();
+  </script>
+
+
+
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" lang="zh-Hans">
+
+  
+  
+    
+  
+
+  <div class="container sidebar-position-left page-post-detail">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta ">
+    
+
+    <div class="custom-logo-site-title">
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Ching</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+      
+        <p class="site-subtitle"></p>
+      
+  </div>
+
+  <div class="site-nav-toggle">
+    <button>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+<nav class="site-nav">
+  
+
+  
+    <ul id="menu" class="menu">
+      
+        
+        <li class="menu-item menu-item-home">
+          <a href="/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-home"></i> <br>
+            
+            首页
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-about">
+          <a href="/about/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-user"></i> <br>
+            
+            关于
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-tags">
+          <a href="/tags/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-tags"></i> <br>
+            
+            标签
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-categories">
+          <a href="/categories/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-th"></i> <br>
+            
+            分类
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-archives">
+          <a href="/archives/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-archive"></i> <br>
+            
+            归档
+          </a>
+        </li>
+      
+
+      
+    </ul>
+  
+
+  
+</nav>
+
+
+
+ </div>
+    </header>
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="http://ZzIris.github.io/2019/08/22/tcp-ip-TimeoutAndCongestion/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="Ching">
+      <meta itemprop="description" content>
+      <meta itemprop="image" content="/uploads/IMG_2745.JPG">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Ching">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">TCP的超时与拥塞</h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-08-22T08:54:45+08:00">
+                2019-08-22
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+            <span class="post-category">
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/网络/" itemprop="url" rel="index">
+                    <span itemprop="name">网络</span>
+                  </a>
+                </span>
+
+                
+                
+              
+            </span>
+          
+
+          
+            
+          
+
+          
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        <h1 id="一-前言"><a href="#一-前言" class="headerlink" title="一. 前言"></a>一. 前言</h1><p>&emsp;&emsp;在TCP的传输过程中，由于网络情况的原因，如网络堵塞、数据包绕道从而会导致发送的数据包丢失，而为了保证传输的可靠性，即发送端发送的每一个报文段接收方都能接收到，TCP采取了一系列的处理措施来保证网络的顺畅与解决数据包丢失的问题，这些措施包括超时重传、慢启动、拥塞避免以及快重传与快恢复。</p>
+<h1 id="二-TCP保证传输可靠性的措施"><a href="#二-TCP保证传输可靠性的措施" class="headerlink" title="二. TCP保证传输可靠性的措施"></a>二. TCP保证传输可靠性的措施</h1><h2 id="1-超时重传机制"><a href="#1-超时重传机制" class="headerlink" title="1. 超时重传机制"></a>1. 超时重传机制</h2><p>&emsp;&emsp;由于发送方在发送数据包后，由于某些情况如接收方主机宕机，网络线路断开等，从而导致数据包发出去后，发送方无法得到接收方的ack响应。此时发送方无法知道接收方是否已经接收到了该数据包，为了传输的可靠，在超过了一定的等待ack时限后，发送发会主动再次发送接收方未响应ack的数据包，这就是超时重传。</p>
+<p>&emsp;&emsp;对于重传的等待超时时限RTO（Retransmission TimeOut），有两个计算方式，一个是超时重传失败后的指数退避，另一个是正常接收ack情况下根据往返时间RTT（Round Trip Time）和RTT均值偏差来进行更新计算。</p>
+<h3 id="指数退避"><a href="#指数退避" class="headerlink" title="指数退避"></a>指数退避</h3><p>&emsp;&emsp;首先看个简单例子：</p>
+<p><img src="/images/tcp_ip_TimeoutAndCongestion/1.png" alt title="图1"></p>
+<p>该例子中，可以发现在完成连接建立后，除了第一个发送的报文段被确认后，第二个发送的报文段发生了超时并执行了重传，可以观察到重传报文段为7~18行，19行由于超时重传的最终时限到了，使得发送方放弃连接从而发送复位信号。可以观察到每次重传的时间间隔为1.0136、3.0001、6.0002、11.9905、24.0007、48.0013、64.0018…可以发现每次的重传时间为上一次的两倍，单词可以观察到第一次的重传间隔时间为1s左右，而不是1.5s，其原因如下图所示：</p>
+<p><img src="/images/tcp_ip_TimeoutAndCongestion/2.png" alt title="图2"></p>
+<p>由于第一次计时的启动会发生在一个滴答内的任意一时刻，因此导致其显示计时为1.0136s,但在时钟滴答上却是经历了3个滴答，也就是是为1.5s。</p>
+<p>&emsp;&emsp;这种在重传失败后，RTO的更新方式就是指数退避，即下一次的RTO为上一次的两倍，直到达到RTO的上限为止，本例中的RTO上限为64s。</p>
+<h3 id="根据RTT与RTT均值偏差进行更新计算"><a href="#根据RTT与RTT均值偏差进行更新计算" class="headerlink" title="根据RTT与RTT均值偏差进行更新计算"></a>根据RTT与RTT均值偏差进行更新计算</h3><h4 id="RTT与RTO更新计算公式"><a href="#RTT与RTO更新计算公式" class="headerlink" title="RTT与RTO更新计算公式"></a>RTT与RTO更新计算公式</h4><p>&emsp;&emsp;正常情况下，接收方即便能正常接收ack，但由于其并不能预知下一个ack的到来会不会超时，所以会实时计算并更新报文段的RTT和RTO，在最初的TCP规范中，RTT和RTO的计算方式为:</p>
+<script type="math/tex; mode=display">
+R \leftarrow  \alpha R + (1 - \alpha)M \\
+RTO = R\beta</script><p>其中平滑因子$\alpha$取值为0.9，所得R为平滑RTT，时延离散因子$\beta$取值为2。</p>
+<p>&emsp;&emsp;但由于该计算方式对RTT大范围变化时的情况不敏感，会在网络达到饱和时存在很多不必要的重传，增加网络负载。为了解决该问题，引入了跟踪RTT方差来进行计算，而为了方便计算，使用均值偏差来代替标准偏差，更改后的计算方式为：</p>
+<script type="math/tex; mode=display">
+Err = M - A \\
+A \leftarrow A + gErr \\
+D \leftarrow D + h(\left | Err \right | - D) \\
+RTO = A + 4D</script><p>其中A为平滑RTT，M为刚实际测量的RTT，Err则为实际RTT和平滑RTT之差，D为平滑均值偏差。增量g取值1/8，h取值1/4。A和D共同用来计算下一个重传时间RTO，可以看出较大的RTT波动会加快RTO上升。</p>
+<h4 id="实际RTT测量过程"><a href="#实际RTT测量过程" class="headerlink" title="实际RTT测量过程"></a>实际RTT测量过程</h4><p>&emsp;&emsp;观察以下例子：</p>
+<p><img src="/images/tcp_ip_TimeoutAndCongestion/3.png" alt title="图3"></p>
+<p>&emsp;&emsp;当一个报文段发出时，若当前定时器没有被启动，则定时器启动开始计算当前报文发出的RTT，同时记录下该报文段的起始序号，当收到一个ack的确认序号包含该起始序号后，就关闭该定时器，然后根据新测量的RTT，使用前面的更新计算公式计算新的RTT和RTO。从例子中可以看到，启动定时器的报文为1、3、6三个报文段，而像4、7和9报文段，由于在它们发出时，定时器已处于启动状态，因此不会去测量它们的RTT。
+&emsp;&emsp;再观察三个测量所得RTT，第一个RTT显示为1.061s，而插口排错信息显示该过程历经了3个TCP时钟滴答，RTT测量实际为1500ms；第二个RTT显示为0.808s,而它的RTT实际测量为1个TCP时钟滴答；第三个RTT显示为1.015s，而它的RTT实际测量为2个TCP时钟滴答，下图给出了RTT显示时间与实际测量时间的关系：</p>
+<p><img src="/images/tcp_ip_TimeoutAndCongestion/4.png" alt title="图4"></p>
+<p>在RTT测量中，使用的是TCP 500ms的时钟滴答。图的上端为500ms滴答的时刻（虚线表示），下端为定时启动和关闭的时刻（实线表示），可以看到，第一个1.061s的测量历经了3个虚线，即表明经历了3个时钟滴答，RTT实际测量值为1500ms，而第二个0.808s的测量历经了1个虚线，为1个时钟滴答，RTT实际测量值为500ms，而第三个1.015s历经了2个虚线，为2个时钟滴答。</p>
+<h4 id="Karn算法"><a href="#Karn算法" class="headerlink" title="Karn算法"></a>Karn算法</h4><p>&emsp;&emsp;Karn算法内容为</p>
+<p>1.当一个超时和重传发生时，在重传数据确认最后到达前不更新平滑RTT。</p>
+<p>2.若数据被重传，则RTO进行指数退避，且在下一次传输时使用这个退避后的RTO。</p>
+<p>3.只有当一个没有被重传的报文段得到了确认才对RTO进行更新。</p>
+<h4 id="RTT与RTO更新的完整执行流程"><a href="#RTT与RTO更新的完整执行流程" class="headerlink" title="RTT与RTO更新的完整执行流程"></a>RTT与RTO更新的完整执行流程</h4><p>&emsp;&emsp;在RTT与RTO的更新执行流程在整个TCP传输过程中可分为两部分。第一部分为连接建立阶段，第二部分为数据传输阶段。</p>
+<p>连接建立阶段：</p>
+<p>&emsp;&emsp;在该阶段，RTT与RTO计算公式中的A和D分别被初始化为0和3s,初始RTO计算为
+$RTO = A + 2D$，初始RTO计算为6s，若此时SYN信号没有收到应答，则大约6s后执行重传，第一次执行重传则先计算$RTO = A + 4D$，结果为12s，由于为第一次重传，需做一次指数退避，则最终RTO为24s，若后面依旧重传失败则继续执行指数避让。直到重传成功。</p>
+<p>数据传输阶段：</p>
+<p>&emsp;&emsp;根据Karn算法，该阶段开始依旧采用上一阶段最后所得的RTO，若该阶段一开始就发生超时重传，则RTO直接执行指数退避。若正常接收ack，则初始平滑RTT为$A = M + 0.5$，初始平滑均值偏差为$D = A/2$，RTO计算为$RTO = A + 4D$，往后的过程若正常接收ack则按照前面所说的更新公式进行计算，若发生重传则执行RTO指数退避。</p>
+<h2 id="2-快速重传机制"><a href="#2-快速重传机制" class="headerlink" title="2. 快速重传机制"></a>2. 快速重传机制</h2><p>&emsp;&emsp;不同于超时重传，快重传发生时，发送方依旧可以收到接收方的ack确认，然而只是其收到的ack确认中的确认序号一直是某一个相同的序号，即表示，接收方没接收到该序号的报文段，因此在重复发送该确认序号的ack以请求该报文段。此时发送方在收到三个相同确认序号的ack后立即将该丢失的报文段进行重发而无需等待超时，该机制即为快速重传机制，可以看出快速重传机制提高了传输的效率。例子如下图所示：</p>
+<p><img src="/images/tcp_ip_TimeoutAndCongestion/5.png" alt title="图5"></p>
+<p>&emsp;&emsp;该例子中，发送方win大小为4096，接收方win大小为8192（图中已将其省略给出）</p>
+<p>&emsp;&emsp;可以看到45号报文段丢失，而58号应答确认收到44报文段后，即便后续的46~59号报文段都被接收方接收了，可其由于没有收到45号报文段，其一直发送的ack确认序号为6657（58号报文为首次确认，而60、61、62为前三次重复的ack）而不会去确认后面失序了的报文段，在收到三次重复ack后，发送方立即发起重传，直到45号报文段接收成功后，才将其以及其后续发送的所有报文段一起进行ack应答（72号报文段），可以看到72号报文段win大小为5888，即前面所有发送的报文段刚被确认还没来得及被应用层取走。</p>
+<p>&emsp;&emsp;此处解释为什么要是重复ack为3个才重传，由于在接收方在对几个报文段重新排序时其也会发送重复的ack，但这种下，其在重新排序处理完成并发出新的ack之前，其最多只能发送1~2个重复ack，因此一般收到第三个ack即大概率表明报文段丢失了。</p>
+<h2 id="3-拥塞避免算法"><a href="#3-拥塞避免算法" class="headerlink" title="3. 拥塞避免算法"></a>3. 拥塞避免算法</h2><p>&emsp;&emsp;拥塞避免算法一般都和慢启动算法一起结合使用，在一般的TCP传输过程，前半期为慢启动，而后半期为拥塞避免。慢启动和拥塞避免都维护着两个变量：拥塞窗口cwnd和慢启动门限ssthresh</p>
+<h3 id="慢启动"><a href="#慢启动" class="headerlink" title="慢启动"></a>慢启动</h3><p>&emsp;&emsp;为了防止TCP一开始进行数据传输时一下子向网络中注入过多的数据而导致网络快速堵塞，从而采用慢启动策略。所谓慢启动，即TCP开始传输数据时先将cwnd大小设置为1个报文段大小进行发送（发送数据量为cwnd值和通告窗口值间的最小值），当发送了1个报文段，其相应收到1个ack确认后，其下一次发送所能发送的报文数量将增加1变成2，下一次发送2个报文段，收到2个ack则下一次发送量变成4…以此不断得将报文段发送量翻番，以指数增加的形式增加发送数据的量，即为慢启动策略。</p>
+<h3 id="拥塞避免"><a href="#拥塞避免" class="headerlink" title="拥塞避免"></a>拥塞避免</h3><p>&emsp;&emsp;当cwnd的数量以指数增长的形式增长超过ssthresh值后，由于再以指数形式增加可能会很快导致网络堵塞，于是便转入执行拥塞避免策略，相对于慢启动策略，拥塞避免策略即在每个报文段接收到ack后，其不再以指数形式增长，而是每收到一个ack，则cwnd增长$1/cwnd$,这是一种线性增长，我们希望在一个RTT内最多为cwnd增加1个报文段（无论这个RTT中收到了多少个ack）</p>
+<p><img src="/images/tcp_ip_TimeoutAndCongestion/6.png" alt title="图6"></p>
+<p>&emsp;&emsp;拥塞避免阶段，新的cwnd值按以下方法计算：</p>
+<script type="math/tex; mode=display">
+cwnd \leftarrow cwnd + \frac{segsize\times segsize}{cwnd} + \frac{segsize}{8}</script><p>其中$\frac{segsize}{8}$ 为某些版本的错误TCP实现，如4.3BSD和4.4BSD</p>
+<h3 id="快速恢复"><a href="#快速恢复" class="headerlink" title="快速恢复"></a>快速恢复</h3><p>&emsp;&emsp;拥塞发生的情况表现为快重传或超时。</p>
+<p>&emsp;&emsp;当发生快重传时，为了稳定网络情况，此时需要减小cwnd，但由于发生快重传时，收到了重复的ack，只有在接收方收到后续的报文段时才会响应重复的ack，此时表明在收发两端还是存在这流动的数据，而为了不使得数据流突然骤降，因此此时选择快速恢复策略而不是慢启动。</p>
+<p>&emsp;&emsp;所谓快速恢复策略即为：</p>
+<p>1）当收到3个重复ack时，ssthresh设为当前cwnd的一半，并重传报文段，然后设置cwnd为ssthresh加3倍报文段的大小（这里的加3倍报文段大小的原因是因为受到了3个重复ack且cwnd没有超过ssthresh）</p>
+<p>2）在之后每收到一个重复ack，cwnd增加1个报文段大小并发送1个分组（如果新的cwnd大小允许发送）。</p>
+<p>3）当下一个新的ack到达时，将cwnd设置为ssthresh（步骤1中设置的值）加上1个报文段大小（此处加1个报文段大小时因为此处收到了新的ac且cwnd没有超过ssthresh）</p>
+<p>&emsp;&emsp;若发生的是超时，则不会执行快速恢复，而是会先将ssthresh设为当前cwnd的一半，并将cwnd设为1个报文段大小即重新执行慢启动。</p>
+<h3 id="拥塞避免的例子"><a href="#拥塞避免的例子" class="headerlink" title="拥塞避免的例子"></a>拥塞避免的例子</h3><p>&emsp;&emsp;以下来通过一个拥塞避免的例子来观察cwnd和ssthresh的变化：</p>
+<p><img src="/images/tcp_ip_TimeoutAndCongestion/7.png" alt title="图7"></p>
+<p>此例中可以观察到：</p>
+<p>1）起初cwnd初始化为一个报文段大小即256字节，ssthresh为65535字节，在连接建立阶段就发生了超时重传，则cwnd不变，而ssthresh将为cwnd的一半，但由于ssthresh的最小值应为2个报文段大小，因此其变成了512字节。</p>
+<p>2）而后续可以看到，在慢启动阶段cwnd的增加按照收到的ack个数来进行增加，而当cwnd超过了ssthresh后进入拥塞避免阶段，cwnd增加按照前面介绍的计算公式进行。</p>
+<p>&emsp;&emsp;在该例子的后续阶段(对应图5)：</p>
+<p><img src="/images/tcp_ip_TimeoutAndCongestion/8.png" alt title="图8"> </p>
+<p>可以观察到：</p>
+<p>1）当发生重复确认时，三次重复确认的前两次并不会增加cwnd。</p>
+<p>2）而在第3个重传ack到来时候，ssthresh变了当前cwnd的一半，且cwnd变成了ssthresh加3倍报文段大小。</p>
+<p>3）而后每收到1个重复ack则cwnd增加1个报文段大小，直到新数据确认到后，cwnd变成了ssthresh加一个报文段大小。</p>
+<p>4）注意到重传之后获取新数据确认之前，并非每收到一个重复ack就可以新发送一个报文段，要想发送新报文段，则需比较当前cwnd与已发送而未确认数据的大小，只有cwnd大小比已发送而未确认数据的大小大时才可发送新的报文段。</p>
+<h2 id="4-按每条路由进行度量"><a href="#4-按每条路由进行度量" class="headerlink" title="4. 按每条路由进行度量"></a>4. 按每条路由进行度量</h2><p>&emsp;&emsp;在较新的TCP实现中，其在路由表项中维持着许多我们前面介绍过的指标，包括被平滑的RTT、被平滑均值偏差记忆慢启动门限等。如果在TCP连接关闭之前已经发送了足够多的数据（16个窗口的数据，即16个RTT采样，这能使被平滑的RTT不会偏离正确结果的5%）来获得有意义的统计度量值并且当目的结点的路由表项不是一个默认的表项，那就把所获的统计度量值保存在路由表项中以备下次使用。当下一次新连接建立的时候，不论主动建立还是被动建立，若该连接将要使用的路由表项有这些度量值，就可以直接将这些值来对相应变量进行初始化。</p>
+<p>总结一句话：上一次连接所得到的有意义统计度量值会进行保存，而下一次连接建立时会根据这些度量值进行初始化。</p>
+<h2 id="5-ICMP差错"><a href="#5-ICMP差错" class="headerlink" title="5. ICMP差错"></a>5. ICMP差错</h2><p>&emsp;&emsp;ICMP（Internet Control Message Protocol）为网络控制报文协议，其报文封装在IP包里，其主要分为查询报文类型和差错报文类型，我们平时用的ping即是查询报文类型，而tracerout使用的则是差错报文类型。</p>
+<p>&emsp;&emsp;ICMP常见的差错为源站抑制、主机不可达和网络不可达</p>
+<p>&emsp;&emsp;TCP对ICMP差错的处理：</p>
+<p>1）源站抑制：将cwnd设置为1个报文段来发起慢启动，但不改变慢启动门限ssthresh。</p>
+<p>2）主机不可达或网络不可：实际上被TCP忽略，TCP不会放弃连接而是会试图重复发送该出错的数据，尽管最终会导致超时放弃，TCP在处理这样的一个超时错误时使用的是其他错误码而不是“连接超时”</p>
+<p><img src="/images/tcp_ip_TimeoutAndCongestion/9.png" alt title="图9"></p>
+<h2 id="6-重新分组"><a href="#6-重新分组" class="headerlink" title="6. 重新分组"></a>6. 重新分组</h2><p>&emsp;&emsp;TCP在发生超时重传时，它重传的不一定是同样的报文，它在准备重传时，如果发现后续还有数据，其可以将本来要发送的数据与后面的数据进行整合后一起进行重传。</p>
+<p><img src="/images/tcp_ip_TimeoutAndCongestion/10.png" alt title="图10"></p>
+<p><img src="/images/tcp_ip_TimeoutAndCongestion/11.png" alt title="图11"></p>
+
+      
+    </div>
+    
+    
+    
+
+    
+
+    
+      <div>
+        <div style="padding: 10px 0; margin: 20px auto; width: 90%; text-align: center;">
+  <div>你们的支持是我源源不断创作的动力！！！</div>
+  <button id="rewardButton" disable="enable" onclick="var qr = document.getElementById('QR'); if (qr.style.display === 'none') {qr.style.display='block';} else {qr.style.display='none'}">
+    <span>打赏</span>
+  </button>
+  <div id="QR" style="display: none;">
+
+    
+      <div id="wechat" style="display: inline-block">
+        <img id="wechat_qr" src="/uploads/wechatpay.JPG" alt="Ching 微信支付">
+        <p>微信支付</p>
+      </div>
+    
+
+    
+      <div id="alipay" style="display: inline-block">
+        <img id="alipay_qr" src="/uploads/alipay.JPG" alt="Ching 支付宝">
+        <p>支付宝</p>
+      </div>
+    
+
+    
+
+  </div>
+</div>
+
+      </div>
+    
+
+    
+
+    <footer class="post-footer">
+      
+        <div class="post-tags">
+          
+            <a href="/tags/TCP-IP/" rel="tag"># TCP/IP</a>
+          
+        </div>
+      
+
+      
+      
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+              <a href="/2019/08/11/iSCSICeph/" rel="next" title="使用iSCSI协议实现Ceph块存储">
+                <i class="fa fa-chevron-left"></i> 使用iSCSI协议实现Ceph块存储
+              </a>
+            
+          </div>
+
+          <span class="post-nav-divider"></span>
+
+          <div class="post-nav-prev post-nav-item">
+            
+              <a href="/2019/08/26/NDK-build/" rel="prev" title="Android开发中使用ndk-build进行NDK构建">
+                Android开发中使用ndk-build进行NDK构建 <i class="fa fa-chevron-right"></i>
+              </a>
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+
+    <div class="post-spread">
+      
+    </div>
+  </div>
+
+
+          </div>
+          
+
+
+          
+
+  
+
+
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    
+    <div class="sidebar-inner">
+
+      
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
+            文章目录
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+            站点概览
+          </li>
+        </ul>
+      
+
+      <section class="site-overview-wrap sidebar-panel">
+        <div class="site-overview">
+          <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+            
+              <img class="site-author-image" itemprop="image" src="/uploads/IMG_2745.JPG" alt="Ching">
+            
+              <p class="site-author-name" itemprop="name">Ching</p>
+              <p class="site-description motion-element" itemprop="description">努力便是晴天。</p>
+          </div>
+
+          <nav class="site-state motion-element">
+
+            
+              <div class="site-state-item site-state-posts">
+              
+                <a href="/archives/">
+              
+                  <span class="site-state-item-count">10</span>
+                  <span class="site-state-item-name">日志</span>
+                </a>
+              </div>
+            
+
+            
+              
+              
+              <div class="site-state-item site-state-categories">
+                <a href="/categories/index.html">
+                  <span class="site-state-item-count">6</span>
+                  <span class="site-state-item-name">分类</span>
+                </a>
+              </div>
+            
+
+            
+              
+              
+              <div class="site-state-item site-state-tags">
+                <a href="/tags/index.html">
+                  <span class="site-state-item-count">17</span>
+                  <span class="site-state-item-name">标签</span>
+                </a>
+              </div>
+            
+
+          </nav>
+
+          
+
+          
+            <div class="links-of-author motion-element">
+                
+                  <span class="links-of-author-item">
+                    <a href="https://github.com/ZzIris" target="_blank" title="GitHub">
+                      
+                        <i class="fa fa-fw fa-globe"></i>GitHub</a>
+                  </span>
+                
+            </div>
+          
+
+          
+          
+
+          
+          
+
+          
+
+        </div>
+      </section>
+
+      
+      <!--noindex-->
+        <section class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+              
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#一-前言"><span class="nav-number">1.</span> <span class="nav-text">一. 前言</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#二-TCP保证传输可靠性的措施"><span class="nav-number">2.</span> <span class="nav-text">二. TCP保证传输可靠性的措施</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#1-超时重传机制"><span class="nav-number">2.1.</span> <span class="nav-text">1. 超时重传机制</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#指数退避"><span class="nav-number">2.1.1.</span> <span class="nav-text">指数退避</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#根据RTT与RTT均值偏差进行更新计算"><span class="nav-number">2.1.2.</span> <span class="nav-text">根据RTT与RTT均值偏差进行更新计算</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#RTT与RTO更新计算公式"><span class="nav-number">2.1.2.1.</span> <span class="nav-text">RTT与RTO更新计算公式</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#实际RTT测量过程"><span class="nav-number">2.1.2.2.</span> <span class="nav-text">实际RTT测量过程</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#Karn算法"><span class="nav-number">2.1.2.3.</span> <span class="nav-text">Karn算法</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#RTT与RTO更新的完整执行流程"><span class="nav-number">2.1.2.4.</span> <span class="nav-text">RTT与RTO更新的完整执行流程</span></a></li></ol></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#2-快速重传机制"><span class="nav-number">2.2.</span> <span class="nav-text">2. 快速重传机制</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#3-拥塞避免算法"><span class="nav-number">2.3.</span> <span class="nav-text">3. 拥塞避免算法</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#慢启动"><span class="nav-number">2.3.1.</span> <span class="nav-text">慢启动</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#拥塞避免"><span class="nav-number">2.3.2.</span> <span class="nav-text">拥塞避免</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#快速恢复"><span class="nav-number">2.3.3.</span> <span class="nav-text">快速恢复</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#拥塞避免的例子"><span class="nav-number">2.3.4.</span> <span class="nav-text">拥塞避免的例子</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#4-按每条路由进行度量"><span class="nav-number">2.4.</span> <span class="nav-text">4. 按每条路由进行度量</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#5-ICMP差错"><span class="nav-number">2.5.</span> <span class="nav-text">5. ICMP差错</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#6-重新分组"><span class="nav-number">2.6.</span> <span class="nav-text">6. 重新分组</span></a></li></ol></li></ol></div>
+            
+
+          </div>
+        </section>
+      <!--/noindex-->
+      
+
+      
+
+    </div>
+  </aside>
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright">&copy; 2019 &mdash; <span itemprop="copyrightYear">2021</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Ching</span>
+
+  
+</div>
+
+
+  <div class="powered-by">由 <a class="theme-link" target="_blank" href="https://hexo.io">Hexo</a> 强力驱动</div>
+
+
+
+  <span class="post-meta-divider">|</span>
+
+
+
+  <div class="theme-info">主题 &mdash; <a class="theme-link" target="_blank" href="https://github.com/iissnan/hexo-theme-next">NexT.Muse</a> v5.1.4</div>
+
+
+
+
+        
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+
+    
+      <div class="back-to-top">
+        <i class="fa fa-arrow-up"></i>
+        
+      </div>
+    
+
+    
+
+  </div>
+
+  
+
+<script type="text/javascript">
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
+
+
+
+
+
+
+
+
+
+  
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery/index.js?v=2.1.3"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fastclick/lib/fastclick.min.js?v=1.0.6"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery_lazyload/jquery.lazyload.js?v=1.9.7"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fancybox/source/jquery.fancybox.pack.js?v=2.1.5"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/canvas-nest/canvas-nest.min.js"></script>
+  
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/utils.js?v=5.1.4"></script>
+
+  <script type="text/javascript" src="/js/src/motion.js?v=5.1.4"></script>
+
+
+
+  
+  
+
+  
+  <script type="text/javascript" src="/js/src/scrollspy.js?v=5.1.4"></script>
+<script type="text/javascript" src="/js/src/post-details.js?v=5.1.4"></script>
+
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/bootstrap.js?v=5.1.4"></script>
+
+
+
+  
+
+
+  
+
+
+
+
+	
+
+
+
+
+
+  
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+  
+
+  
+
+  
+
+  
+  
+
+  
+  
+    <script type="text/x-mathjax-config">
+      MathJax.Hub.Config({
+        tex2jax: {
+          inlineMath: [ ['$','$'], ["\\(","\\)"]  ],
+          processEscapes: true,
+          skipTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
+        }
+      });
+    </script>
+
+    <script type="text/x-mathjax-config">
+      MathJax.Hub.Queue(function() {
+        var all = MathJax.Hub.getAllJax(), i;
+        for (i=0; i < all.length; i += 1) {
+          all[i].SourceElement().parentNode.className += ' has-jax';
+        }
+      });
+    </script>
+    <script type="text/javascript" src="//cdn.bootcss.com/mathjax/2.7.1/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+  
+
+
+  
+
+  
+
+</body>
+</html>

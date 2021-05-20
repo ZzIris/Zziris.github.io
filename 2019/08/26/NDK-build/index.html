@@ -1,0 +1,916 @@
+<!DOCTYPE html>
+
+
+
+  
+
+
+<html class="theme-next muse use-motion" lang="zh-Hans">
+<head><meta name="generator" content="Hexo 3.9.0">
+  <meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<meta name="theme-color" content="#222">
+
+
+
+
+
+
+
+
+
+<meta http-equiv="Cache-Control" content="no-transform">
+<meta http-equiv="Cache-Control" content="no-siteapp">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+  <link href="/lib/fancybox/source/jquery.fancybox.css?v=2.1.5" rel="stylesheet" type="text/css">
+
+
+
+
+  
+  
+  
+  
+
+  
+    
+    
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+    
+    
+    <link href="//fonts.googleapis.com/css?family=Lato:300,300italic,400,400italic,700,700italic&subset=latin,latin-ext" rel="stylesheet" type="text/css">
+  
+
+
+
+
+
+
+<link href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2" rel="stylesheet" type="text/css">
+
+<link href="/css/main.css?v=5.1.4" rel="stylesheet" type="text/css">
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png?v=5.1.4">
+
+
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png?v=5.1.4">
+
+
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png?v=5.1.4">
+
+
+  <link rel="mask-icon" href="/images/logo.svg?v=5.1.4" color="#222">
+
+
+
+
+
+  <meta name="keywords" content="Android,NDK,">
+
+
+
+
+
+
+
+
+
+
+<meta name="description" content="前言&amp;emsp;&amp;emsp;NDK一般与JNI共同出现，此处先简单地介绍JNI与NDK。JNI全称Java Native Interface，JNI是Java的编程框架，可以先通俗地把其理解为Java开发中的一种技巧，使用这种技巧可以使得Java与C/C++交互，即可达到在Java里调用C/C++的目的。NDK全称为Native Development Kit，可以先通俗地将其理解为Android">
+<meta name="keywords" content="Android,NDK">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Android开发中使用ndk-build进行NDK构建">
+<meta property="og:url" content="http://ZzIris.github.io/2019/08/26/NDK-build/index.html">
+<meta property="og:site_name" content="Ching">
+<meta property="og:description" content="前言&amp;emsp;&amp;emsp;NDK一般与JNI共同出现，此处先简单地介绍JNI与NDK。JNI全称Java Native Interface，JNI是Java的编程框架，可以先通俗地把其理解为Java开发中的一种技巧，使用这种技巧可以使得Java与C/C++交互，即可达到在Java里调用C/C++的目的。NDK全称为Native Development Kit，可以先通俗地将其理解为Android">
+<meta property="og:locale" content="zh-Hans">
+<meta property="og:image" content="http://zziris.github.io/images/NDK_Build/1.png">
+<meta property="og:image" content="http://zziris.github.io/images/NDK_Build/2.png">
+<meta property="og:image" content="http://zziris.github.io/images/NDK_Build/3.png">
+<meta property="og:image" content="http://zziris.github.io/images/NDK_Build/4.png">
+<meta property="og:image" content="http://zziris.github.io/images/NDK_Build/5.png">
+<meta property="og:image" content="http://zziris.github.io/images/NDK_Build/6.png">
+<meta property="og:image" content="http://zziris.github.io/images/NDK_Build/7.png">
+<meta property="og:image" content="http://zziris.github.io/images/NDK_Build/8.png">
+<meta property="og:image" content="http://zziris.github.io/images/NDK_Build/9.png">
+<meta property="og:image" content="http://zziris.github.io/images/NDK_Build/10.png">
+<meta property="og:image" content="http://zziris.github.io/images/NDK_Build/11.png">
+<meta property="og:image" content="http://zziris.github.io/images/NDK_Build/12.png">
+<meta property="og:image" content="http://zziris.github.io/images/NDK_Build/13.png">
+<meta property="og:image" content="http://zziris.github.io/images/NDK_Build/14.png">
+<meta property="og:image" content="http://zziris.github.io/images/NDK_Build/15.png">
+<meta property="og:image" content="http://zziris.github.io/images/NDK_Build/16.png">
+<meta property="og:image" content="http://zziris.github.io/images/NDK_Build/17.png">
+<meta property="og:image" content="http://zziris.github.io/images/NDK_Build/18.png">
+<meta property="og:image" content="http://zziris.github.io/images/NDK_Build/19.png">
+<meta property="og:updated_time" content="2021-05-20T14:51:05.158Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Android开发中使用ndk-build进行NDK构建">
+<meta name="twitter:description" content="前言&amp;emsp;&amp;emsp;NDK一般与JNI共同出现，此处先简单地介绍JNI与NDK。JNI全称Java Native Interface，JNI是Java的编程框架，可以先通俗地把其理解为Java开发中的一种技巧，使用这种技巧可以使得Java与C/C++交互，即可达到在Java里调用C/C++的目的。NDK全称为Native Development Kit，可以先通俗地将其理解为Android">
+<meta name="twitter:image" content="http://zziris.github.io/images/NDK_Build/1.png">
+
+
+
+<script type="text/javascript" id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Muse',
+    version: '5.1.4',
+    sidebar: {"position":"left","display":"post","offset":12,"b2t":false,"scrollpercent":false,"onmobile":false},
+    fancybox: true,
+    tabs: true,
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    duoshuo: {
+      userId: '0',
+      author: '博主'
+    },
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    }
+  };
+</script>
+
+
+
+  <link rel="canonical" href="http://ZzIris.github.io/2019/08/26/NDK-build/">
+
+
+
+
+
+  <title>Android开发中使用ndk-build进行NDK构建 | Ching</title>
+  
+
+
+
+
+
+  <script type="text/javascript">
+    var _hmt = _hmt || [];
+    (function() {
+      var hm = document.createElement("script");
+      hm.src = "https://hm.baidu.com/hm.js?3ef8bbb3049eedc7533c61fb79f60f5f";
+      var s = document.getElementsByTagName("script")[0];
+      s.parentNode.insertBefore(hm, s);
+    })();
+  </script>
+
+
+
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" lang="zh-Hans">
+
+  
+  
+    
+  
+
+  <div class="container sidebar-position-left page-post-detail">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta ">
+    
+
+    <div class="custom-logo-site-title">
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Ching</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+      
+        <p class="site-subtitle"></p>
+      
+  </div>
+
+  <div class="site-nav-toggle">
+    <button>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+<nav class="site-nav">
+  
+
+  
+    <ul id="menu" class="menu">
+      
+        
+        <li class="menu-item menu-item-home">
+          <a href="/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-home"></i> <br>
+            
+            首页
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-about">
+          <a href="/about/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-user"></i> <br>
+            
+            关于
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-tags">
+          <a href="/tags/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-tags"></i> <br>
+            
+            标签
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-categories">
+          <a href="/categories/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-th"></i> <br>
+            
+            分类
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-archives">
+          <a href="/archives/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-archive"></i> <br>
+            
+            归档
+          </a>
+        </li>
+      
+
+      
+    </ul>
+  
+
+  
+</nav>
+
+
+
+ </div>
+    </header>
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="http://ZzIris.github.io/2019/08/26/NDK-build/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="Ching">
+      <meta itemprop="description" content>
+      <meta itemprop="image" content="/uploads/IMG_2745.JPG">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Ching">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">Android开发中使用ndk-build进行NDK构建</h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-08-26T16:50:36+08:00">
+                2019-08-26
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+            <span class="post-category">
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/Android学习/" itemprop="url" rel="index">
+                    <span itemprop="name">Android学习</span>
+                  </a>
+                </span>
+
+                
+                
+              
+            </span>
+          
+
+          
+            
+          
+
+          
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        <h1 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h1><p>&emsp;&emsp;NDK一般与JNI共同出现，此处先简单地介绍JNI与NDK。JNI全称Java Native Interface，JNI是Java的编程框架，可以先通俗地把其理解为Java开发中的一种技巧，使用这种技巧可以使得Java与C/C++交互，即可达到在Java里调用C/C++的目的。NDK全称为Native Development Kit，可以先通俗地将其理解为Android中实现JNI的工具。</p>
+<h1 id="构建NDK项目"><a href="#构建NDK项目" class="headerlink" title="构建NDK项目"></a>构建NDK项目</h1><p>&emsp;&emsp;简单地说，一般做Android开发，我们通常都使用的是SDK，而SDK的开发都是Java语言，但是在实际情况中，有些我们所需实现的功能是使用C/C++语言来开发的（如ffmpeg），若使用SDK，则需要使用Java语言将其再实现一遍，这样会比较耗费时间，所以有时候为了节省开发时间，通过构建NDK及使用JNI就可以实现对C/C++所编写生成的.so文件的调用。要达到这一目的，首先要做的第一步就是构建NDK，我们首先来构建一个NDK有关的简单项目。</p>
+<h2 id="1-下载安装NDK工具"><a href="#1-下载安装NDK工具" class="headerlink" title="1.下载安装NDK工具"></a>1.下载安装NDK工具</h2><p>&emsp;&emsp;首先第一步需要构建NDK环境，需要先下载并安装NDK工具，安装方式如图所示：</p>
+<p><img src="/images/NDK_Build/1.png" alt title="图1"></p>
+<p><img src="/images/NDK_Build/2.png" alt title="图2"></p>
+<p>由于此处，我已安装好了NDK工具，所以显示状态为installed，若未安装则显示未Not installed，此时将NDK选项勾上点确定就会进入下载安装界面，进行安装即可。</p>
+<h2 id="2-定义调用C-C-实现功能函数的类"><a href="#2-定义调用C-C-实现功能函数的类" class="headerlink" title="2.定义调用C/C++实现功能函数的类"></a>2.定义调用C/C++实现功能函数的类</h2><p>&emsp;&emsp;首先New一个普通的JavaClass文件,并定义一个新的类，类的内容如图所示：</p>
+<p><img src="/images/NDK_Build/3.png" alt title="图3"></p>
+<p>其中System.loadLibrary(“main”)作用为加载.so文件。而我们后面所生成的.so文件将以main来命名，此处指定main来调用相应的.so文件。而我们声明的getNDKPrint函数使用native关键字修饰，表明该方法使用非Java来实现。</p>
+<h2 id="3-生成相应的C-C-头文件"><a href="#3-生成相应的C-C-头文件" class="headerlink" title="3.生成相应的C/C++头文件"></a>3.生成相应的C/C++头文件</h2><p>&emsp;&emsp;此处选择Android Studio下方的Terminal，进入命令行界面，并键入以下命令：</p>
+<p><img src="/images/NDK_Build/4.png" alt title="图4"></p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">cd app\src\main</span><br><span class="line">javah -d jni -classpath ./java com.example.jnistaticregister.NDKHelper</span><br></pre></td></tr></table></figure>
+<p>&emsp;&emsp;解释以下第二条指令，javah为Java中用来生成相应C/C++头文件的一个指令，-d为生成目录的选项，-classpath为需要生成C/C++头文件的类的完整类名（即完整包名+类名）的所在路径，整条指令的意思就是在当前目录下创建一个jni目录，并在该目录下生成相应的头文件，而所需生成头文件的类在./java这个路径下。</p>
+<p>&emsp;&emsp;命令执行完后，我们就可以在相应路径下看到jni目录及生成的头文件：</p>
+<p><img src="/images/NDK_Build/5.png" alt title="图5"></p>
+<p>&emsp;&emsp;实际上除了通过使用命令行的方式生成外，我们也可以手动编写头文件，只要按照JNI规则进行编写即可。</p>
+<h2 id="4-编写相应的C-C-函数实现"><a href="#4-编写相应的C-C-函数实现" class="headerlink" title="4.编写相应的C/C++函数实现"></a>4.编写相应的C/C++函数实现</h2><p>&emsp;&emsp;有了头文件及相应的函数声明，就需要对函数进行定义，我们在jni目录下New一个C/C++的源文件，并进行函数实现编写：</p>
+<p><img src="/images/NDK_Build/6.png" alt title="图6"></p>
+<p>可以看到实现的函数与生成的头文件中的函数声明是一样的，其中JNIEXPORT与JNICALL是JNI的相应关键字，jstring是JNI中的类型，JINEnv为JIN运行环境指针，jobject为JNI中的Object类。</p>
+<h2 id="5-将C-C-文件通过NDK配置关联起来"><a href="#5-将C-C-文件通过NDK配置关联起来" class="headerlink" title="5.将C/C++文件通过NDK配置关联起来"></a>5.将C/C++文件通过NDK配置关联起来</h2><p>&emsp;&emsp;首先先在jni目录下新建Android.mk与Application.mk文件并进行编写：</p>
+<p><img src="/images/NDK_Build/7.png" alt title="图7"></p>
+<p>编写内容如下：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">//Android.mk</span><br><span class="line"></span><br><span class="line">LOCAL_PATH := $(call my-dir)</span><br><span class="line">include $(CLEAR_VARS)</span><br><span class="line"></span><br><span class="line">LOCAL_MODULE := main</span><br><span class="line">LOCAL_SRC_FILES := NDKHelper.c</span><br><span class="line"></span><br><span class="line">include $(BUILD_SHARED_LIBRARY)</span><br></pre></td></tr></table></figure>
+<p>其中重要的为LOCAL_MODULE和LOCAL_SRC_FILES关键字，其余部分都是固定的，LOCAL_MODULE为我们需要生成的.so文件的命名，LOCAL_SRC_FILES为我们C/C++的实现源文件，将这两项指定好即可</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">//Application</span><br><span class="line"></span><br><span class="line">APP_ABI := x86_64</span><br><span class="line">APP_STL := c++_static</span><br></pre></td></tr></table></figure>
+<p>其中，APP_ABI为相应支持的CPU架构，目前Android支持的CPU架构为下图所示：</p>
+<p><img src="/images/NDK_Build/8.png" alt title="图8"></p>
+<p>APP_STL为标准库选择。</p>
+<p>&emsp;&emsp;在编写完.mk文件后就可以进行NDK构建了。</p>
+<h3 id="使用ndk-build进行构建"><a href="#使用ndk-build进行构建" class="headerlink" title="使用ndk-build进行构建"></a>使用ndk-build进行构建</h3><p>&emsp;&emsp;构建方式如图所示：</p>
+<p><img src="/images/NDK_Build/9.png" alt title="图9"></p>
+<p><img src="/images/NDK_Build/10.png" alt title="图10"></p>
+<p>选择Build-System时选择ndk-build并且在Project Path中将前面所编写好的Android.mk导入，然后选择OK。</p>
+<p>&emsp;&emsp;在执行完上述步骤后，我们打开app下的build.gradle文件，我们发现比原来多了一部分内容：</p>
+<p><img src="/images/NDK_Build/11.png" alt title="图11"></p>
+<p>观察内容，其中就是给出了我们的Android.mk文件，因此我们发现，其实前面的操作和直接手动在build.gradle文件中增添这部分内容效果是一样的，只不过前面是通过IDE给我们的可视化流程来进行的。</p>
+<p>&emsp;&emsp;前面的步骤操作完后，接下来就来配置Application.mk文件了，配置方法如下图所示：</p>
+<p><img src="/images/NDK_Build/12.png" alt title="图12"></p>
+<p>我们在build.gradle文件中继续增加上图所示的内容，在其中指定了Application.mk，并增加了C/C++编译所需的相应参数选项。</p>
+<p>&emsp;&emsp;在完成前面所有的步骤后，我们build以下就基本大功告成了：</p>
+<p><img src="/images/NDK_Build/13.png" alt title="图13"></p>
+<p>&emsp;&emsp;build完后，我们打开相应目录app/build/即可看到生成的.so文件:</p>
+<p><img src="/images/NDK_Build/14.png" alt title="图14"></p>
+<p><img src="/images/NDK_Build/15.png" alt title="图15"></p>
+<p>但我们会发现在所有的CPU架构文件下都生成了.so文件，但是我们在Application.mk文件中APP_ABI中只指定了x86_64，说明Application.mk中的该选项没有生效，这是一个bug现象，所以为了完成在指定的相应架构目录下生成.so文件的操作，需要以下操作：</p>
+<p><img src="/images/NDK_Build/16.png" alt title="图16"></p>
+<p>我们还是在build.gradle增加该部分内容，以指定生成相应ABI的.so文件。将刚才所生成的.so文件全部删掉再重新build一下，就发现只有在指定的架构目录才生成.so文件了。</p>
+<h2 id="6-检验成功"><a href="#6-检验成功" class="headerlink" title="6.检验成功"></a>6.检验成功</h2><p>&emsp;&emsp;前面的步骤我们完成了一个工作，即NDKHelper类中的getNDKPrint函数其实现是使用C/C++来实现的，我们通过调用该函数来直观看看是否实现成功，实现如下：</p>
+<p><img src="/images/NDK_Build/17.png" alt title="图17"></p>
+<p>可以看到我们在button的监听中实例化了NDKHelper对象，并调用了getNDKPrint函数获取相应的String并重新设置TextView的文字显示。在虚拟调试机上，我们点击按钮后，发现显示的字变了即表明我们的函数已调用成功。</p>
+<p><img src="/images/NDK_Build/18.png" alt title="图18"></p>
+<p><img src="/images/NDK_Build/19.png" alt title="图19"></p>
+<h1 id="末言"><a href="#末言" class="headerlink" title="末言"></a>末言</h1><p>&emsp;&emsp;本文大致地总结了NDK的简单构建流程，但对于其中的原理及涉及到东西如文中提到的JINEXPORT和JINCALL等内容并未详细解释，这部分内容在后续进行了更深入的学习后再进行总结。</p>
+
+      
+    </div>
+    
+    
+    
+
+    
+
+    
+      <div>
+        <div style="padding: 10px 0; margin: 20px auto; width: 90%; text-align: center;">
+  <div>你们的支持是我源源不断创作的动力！！！</div>
+  <button id="rewardButton" disable="enable" onclick="var qr = document.getElementById('QR'); if (qr.style.display === 'none') {qr.style.display='block';} else {qr.style.display='none'}">
+    <span>打赏</span>
+  </button>
+  <div id="QR" style="display: none;">
+
+    
+      <div id="wechat" style="display: inline-block">
+        <img id="wechat_qr" src="/uploads/wechatpay.JPG" alt="Ching 微信支付">
+        <p>微信支付</p>
+      </div>
+    
+
+    
+      <div id="alipay" style="display: inline-block">
+        <img id="alipay_qr" src="/uploads/alipay.JPG" alt="Ching 支付宝">
+        <p>支付宝</p>
+      </div>
+    
+
+    
+
+  </div>
+</div>
+
+      </div>
+    
+
+    
+
+    <footer class="post-footer">
+      
+        <div class="post-tags">
+          
+            <a href="/tags/Android/" rel="tag"># Android</a>
+          
+            <a href="/tags/NDK/" rel="tag"># NDK</a>
+          
+        </div>
+      
+
+      
+      
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+              <a href="/2019/08/22/tcp-ip-TimeoutAndCongestion/" rel="next" title="TCP的超时与拥塞">
+                <i class="fa fa-chevron-left"></i> TCP的超时与拥塞
+              </a>
+            
+          </div>
+
+          <span class="post-nav-divider"></span>
+
+          <div class="post-nav-prev post-nav-item">
+            
+              <a href="/2019/08/29/rtmpSo-Build-import/" rel="prev" title="Android NDK开发例程-rtmp的动态库封装以及导入使用">
+                Android NDK开发例程-rtmp的动态库封装以及导入使用 <i class="fa fa-chevron-right"></i>
+              </a>
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+
+    <div class="post-spread">
+      
+    </div>
+  </div>
+
+
+          </div>
+          
+
+
+          
+
+  
+
+
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    
+    <div class="sidebar-inner">
+
+      
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
+            文章目录
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+            站点概览
+          </li>
+        </ul>
+      
+
+      <section class="site-overview-wrap sidebar-panel">
+        <div class="site-overview">
+          <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+            
+              <img class="site-author-image" itemprop="image" src="/uploads/IMG_2745.JPG" alt="Ching">
+            
+              <p class="site-author-name" itemprop="name">Ching</p>
+              <p class="site-description motion-element" itemprop="description">努力便是晴天。</p>
+          </div>
+
+          <nav class="site-state motion-element">
+
+            
+              <div class="site-state-item site-state-posts">
+              
+                <a href="/archives/">
+              
+                  <span class="site-state-item-count">10</span>
+                  <span class="site-state-item-name">日志</span>
+                </a>
+              </div>
+            
+
+            
+              
+              
+              <div class="site-state-item site-state-categories">
+                <a href="/categories/index.html">
+                  <span class="site-state-item-count">6</span>
+                  <span class="site-state-item-name">分类</span>
+                </a>
+              </div>
+            
+
+            
+              
+              
+              <div class="site-state-item site-state-tags">
+                <a href="/tags/index.html">
+                  <span class="site-state-item-count">17</span>
+                  <span class="site-state-item-name">标签</span>
+                </a>
+              </div>
+            
+
+          </nav>
+
+          
+
+          
+            <div class="links-of-author motion-element">
+                
+                  <span class="links-of-author-item">
+                    <a href="https://github.com/ZzIris" target="_blank" title="GitHub">
+                      
+                        <i class="fa fa-fw fa-globe"></i>GitHub</a>
+                  </span>
+                
+            </div>
+          
+
+          
+          
+
+          
+          
+
+          
+
+        </div>
+      </section>
+
+      
+      <!--noindex-->
+        <section class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+              
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#前言"><span class="nav-number">1.</span> <span class="nav-text">前言</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#构建NDK项目"><span class="nav-number">2.</span> <span class="nav-text">构建NDK项目</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#1-下载安装NDK工具"><span class="nav-number">2.1.</span> <span class="nav-text">1.下载安装NDK工具</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#2-定义调用C-C-实现功能函数的类"><span class="nav-number">2.2.</span> <span class="nav-text">2.定义调用C/C++实现功能函数的类</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#3-生成相应的C-C-头文件"><span class="nav-number">2.3.</span> <span class="nav-text">3.生成相应的C/C++头文件</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#4-编写相应的C-C-函数实现"><span class="nav-number">2.4.</span> <span class="nav-text">4.编写相应的C/C++函数实现</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#5-将C-C-文件通过NDK配置关联起来"><span class="nav-number">2.5.</span> <span class="nav-text">5.将C/C++文件通过NDK配置关联起来</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#使用ndk-build进行构建"><span class="nav-number">2.5.1.</span> <span class="nav-text">使用ndk-build进行构建</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#6-检验成功"><span class="nav-number">2.6.</span> <span class="nav-text">6.检验成功</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#末言"><span class="nav-number">3.</span> <span class="nav-text">末言</span></a></li></ol></div>
+            
+
+          </div>
+        </section>
+      <!--/noindex-->
+      
+
+      
+
+    </div>
+  </aside>
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright">&copy; 2019 &mdash; <span itemprop="copyrightYear">2021</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Ching</span>
+
+  
+</div>
+
+
+  <div class="powered-by">由 <a class="theme-link" target="_blank" href="https://hexo.io">Hexo</a> 强力驱动</div>
+
+
+
+  <span class="post-meta-divider">|</span>
+
+
+
+  <div class="theme-info">主题 &mdash; <a class="theme-link" target="_blank" href="https://github.com/iissnan/hexo-theme-next">NexT.Muse</a> v5.1.4</div>
+
+
+
+
+        
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+
+    
+      <div class="back-to-top">
+        <i class="fa fa-arrow-up"></i>
+        
+      </div>
+    
+
+    
+
+  </div>
+
+  
+
+<script type="text/javascript">
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
+
+
+
+
+
+
+
+
+
+  
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery/index.js?v=2.1.3"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fastclick/lib/fastclick.min.js?v=1.0.6"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery_lazyload/jquery.lazyload.js?v=1.9.7"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fancybox/source/jquery.fancybox.pack.js?v=2.1.5"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/canvas-nest/canvas-nest.min.js"></script>
+  
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/utils.js?v=5.1.4"></script>
+
+  <script type="text/javascript" src="/js/src/motion.js?v=5.1.4"></script>
+
+
+
+  
+  
+
+  
+  <script type="text/javascript" src="/js/src/scrollspy.js?v=5.1.4"></script>
+<script type="text/javascript" src="/js/src/post-details.js?v=5.1.4"></script>
+
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/bootstrap.js?v=5.1.4"></script>
+
+
+
+  
+
+
+  
+
+
+
+
+	
+
+
+
+
+
+  
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+  
+
+  
+
+  
+
+  
+  
+
+  
+  
+    <script type="text/x-mathjax-config">
+      MathJax.Hub.Config({
+        tex2jax: {
+          inlineMath: [ ['$','$'], ["\\(","\\)"]  ],
+          processEscapes: true,
+          skipTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
+        }
+      });
+    </script>
+
+    <script type="text/x-mathjax-config">
+      MathJax.Hub.Queue(function() {
+        var all = MathJax.Hub.getAllJax(), i;
+        for (i=0; i < all.length; i += 1) {
+          all[i].SourceElement().parentNode.className += ' has-jax';
+        }
+      });
+    </script>
+    <script type="text/javascript" src="//cdn.bootcss.com/mathjax/2.7.1/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+  
+
+
+  
+
+  
+
+</body>
+</html>
