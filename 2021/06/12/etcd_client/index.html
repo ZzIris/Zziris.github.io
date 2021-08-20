@@ -1,0 +1,861 @@
+<!DOCTYPE html>
+
+
+
+  
+
+
+<html class="theme-next muse use-motion" lang="zh-Hans">
+<head><meta name="generator" content="Hexo 3.9.0">
+  <meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<meta name="theme-color" content="#222">
+
+
+
+
+
+
+
+
+
+<meta http-equiv="Cache-Control" content="no-transform">
+<meta http-equiv="Cache-Control" content="no-siteapp">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+  <link href="/lib/fancybox/source/jquery.fancybox.css?v=2.1.5" rel="stylesheet" type="text/css">
+
+
+
+
+  
+  
+  
+  
+
+  
+    
+    
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+    
+    
+    <link href="//fonts.googleapis.com/css?family=Lato:300,300italic,400,400italic,700,700italic&subset=latin,latin-ext" rel="stylesheet" type="text/css">
+  
+
+
+
+
+
+
+<link href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2" rel="stylesheet" type="text/css">
+
+<link href="/css/main.css?v=5.1.4" rel="stylesheet" type="text/css">
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png?v=5.1.4">
+
+
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png?v=5.1.4">
+
+
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png?v=5.1.4">
+
+
+  <link rel="mask-icon" href="/images/logo.svg?v=5.1.4" color="#222">
+
+
+
+
+
+  <meta name="keywords" content="etcd,client,">
+
+
+
+
+
+
+
+
+
+
+<meta name="description" content="一. 前言&amp;emsp;&amp;emsp;本文章的主要内容是对etcd-release-3.4中client package的一个源码阅读分析记录。 二. 概括简述&amp;emsp;&amp;emsp;对于client包，是通过http方式来与etcd集群进行交互的一个sdk包，该包的内容主要分为：&amp;emsp;&amp;emsp;1.用于底层发送请求给集群的http client类；&amp;emsp;&amp;emsp;2.用于上层调用的各">
+<meta name="keywords" content="etcd,client">
+<meta property="og:type" content="article">
+<meta property="og:title" content="etcd源码解析1---package client">
+<meta property="og:url" content="http://ZzIris.github.io/2021/06/12/etcd_client/index.html">
+<meta property="og:site_name" content="Ching">
+<meta property="og:description" content="一. 前言&amp;emsp;&amp;emsp;本文章的主要内容是对etcd-release-3.4中client package的一个源码阅读分析记录。 二. 概括简述&amp;emsp;&amp;emsp;对于client包，是通过http方式来与etcd集群进行交互的一个sdk包，该包的内容主要分为：&amp;emsp;&amp;emsp;1.用于底层发送请求给集群的http client类；&amp;emsp;&amp;emsp;2.用于上层调用的各">
+<meta property="og:locale" content="zh-Hans">
+<meta property="og:updated_time" content="2021-06-13T14:05:49.987Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="etcd源码解析1---package client">
+<meta name="twitter:description" content="一. 前言&amp;emsp;&amp;emsp;本文章的主要内容是对etcd-release-3.4中client package的一个源码阅读分析记录。 二. 概括简述&amp;emsp;&amp;emsp;对于client包，是通过http方式来与etcd集群进行交互的一个sdk包，该包的内容主要分为：&amp;emsp;&amp;emsp;1.用于底层发送请求给集群的http client类；&amp;emsp;&amp;emsp;2.用于上层调用的各">
+
+
+
+<script type="text/javascript" id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Muse',
+    version: '5.1.4',
+    sidebar: {"position":"left","display":"post","offset":12,"b2t":false,"scrollpercent":false,"onmobile":false},
+    fancybox: true,
+    tabs: true,
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    duoshuo: {
+      userId: '0',
+      author: '博主'
+    },
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    }
+  };
+</script>
+
+
+
+  <link rel="canonical" href="http://ZzIris.github.io/2021/06/12/etcd_client/">
+
+
+
+
+
+  <title>etcd源码解析1---package client | Ching</title>
+  
+
+
+
+
+
+  <script type="text/javascript">
+    var _hmt = _hmt || [];
+    (function() {
+      var hm = document.createElement("script");
+      hm.src = "https://hm.baidu.com/hm.js?3ef8bbb3049eedc7533c61fb79f60f5f";
+      var s = document.getElementsByTagName("script")[0];
+      s.parentNode.insertBefore(hm, s);
+    })();
+  </script>
+
+
+
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" lang="zh-Hans">
+
+  
+  
+    
+  
+
+  <div class="container sidebar-position-left page-post-detail">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta ">
+    
+
+    <div class="custom-logo-site-title">
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Ching</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+      
+        <p class="site-subtitle"></p>
+      
+  </div>
+
+  <div class="site-nav-toggle">
+    <button>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+<nav class="site-nav">
+  
+
+  
+    <ul id="menu" class="menu">
+      
+        
+        <li class="menu-item menu-item-home">
+          <a href="/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-home"></i> <br>
+            
+            首页
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-about">
+          <a href="/about/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-user"></i> <br>
+            
+            关于
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-tags">
+          <a href="/tags/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-tags"></i> <br>
+            
+            标签
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-categories">
+          <a href="/categories/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-th"></i> <br>
+            
+            分类
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-archives">
+          <a href="/archives/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-archive"></i> <br>
+            
+            归档
+          </a>
+        </li>
+      
+
+      
+    </ul>
+  
+
+  
+</nav>
+
+
+
+ </div>
+    </header>
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="http://ZzIris.github.io/2021/06/12/etcd_client/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="Ching">
+      <meta itemprop="description" content>
+      <meta itemprop="image" content="/uploads/IMG_2745.JPG">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Ching">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">etcd源码解析1---package client</h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+              <time title="创建于" itemprop="dateCreated datePublished" datetime="2021-06-12T17:42:14+08:00">
+                2021-06-12
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+            <span class="post-category">
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/etcd/" itemprop="url" rel="index">
+                    <span itemprop="name">etcd</span>
+                  </a>
+                </span>
+
+                
+                
+              
+            </span>
+          
+
+          
+            
+          
+
+          
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        <h1 id="一-前言"><a href="#一-前言" class="headerlink" title="一. 前言"></a>一. 前言</h1><p>&emsp;&emsp;本文章的主要内容是对etcd-release-3.4中client package的一个源码阅读分析记录。</p>
+<h1 id="二-概括简述"><a href="#二-概括简述" class="headerlink" title="二. 概括简述"></a>二. 概括简述</h1><p>&emsp;&emsp;对于client包，是通过http方式来与etcd集群进行交互的一个sdk包，该包的内容主要分为：<br>&emsp;&emsp;1.用于底层发送请求给集群的http client类；<br>&emsp;&emsp;2.用于上层调用的各种功能封装类(如key类，其包含查询、插入和删除等用于键值对操作的功能，如member类，其包含查询、增加和删除等用于对集群成员操作的功能)。</p>
+<h1 id="三-具体分析"><a href="#三-具体分析" class="headerlink" title="三. 具体分析"></a>三. 具体分析</h1><h2 id="1-http-client相关类"><a href="#1-http-client相关类" class="headerlink" title="1. http client相关类"></a>1. http client相关类</h2><p>&emsp;&emsp;Client interface：
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br></pre></td><td class="code"><pre><span class="line">//client.go</span><br><span class="line"></span><br><span class="line">type Client interface &#123;</span><br><span class="line"></span><br><span class="line">	//用于发送请求同步当前集群可用的节点</span><br><span class="line">	Sync(context.Context) error</span><br><span class="line">	</span><br><span class="line">	//设置定时自动发送节点同步请求</span><br><span class="line">	AutoSync(context.Context, time.Duration) error</span><br><span class="line"></span><br><span class="line">	//返回当前所持有的远程集群节点url</span><br><span class="line">	Endpoints() []string</span><br><span class="line"></span><br><span class="line">	//设置远程集群节点</span><br><span class="line">	SetEndpoints(eps []string) error</span><br><span class="line"></span><br><span class="line">	//获取当前etcd服务版本以及集群版本</span><br><span class="line">	GetVersion(ctx context.Context) (*version.Versions, error)</span><br><span class="line"></span><br><span class="line">	httpClient</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">type httpClient interface &#123;</span><br><span class="line">	//用于发送http请求的调用</span><br><span class="line">	Do(context.Context, httpAction) (*http.Response, []byte, error)</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">type httpAction interface &#123;</span><br><span class="line">	//用于构建相应功能的http请求</span><br><span class="line">	HTTPRequest(url.URL) *http.Request</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>&emsp;&emsp;etcd 用于发送http请求的client接口主要有以上几个相关的借口，而etcd官方也根据给出的client接口实现了一个开箱即用的http client类：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br></pre></td><td class="code"><pre><span class="line">//client.go</span><br><span class="line"></span><br><span class="line">type httpClusterClient struct &#123;</span><br><span class="line"></span><br><span class="line">	//生成用于发送http请求的client类</span><br><span class="line">	clientFactory httpClientFactory</span><br><span class="line"></span><br><span class="line">	//当前可用的所有etcd集群节点</span><br><span class="line">	endpoints     []url.URL</span><br><span class="line"></span><br><span class="line">	//固定节点，固定一个用于发送请求的集群节点，当其可用时不做更换，当期不可用时才进行节点更换</span><br><span class="line">	pinned        int</span><br><span class="line"></span><br><span class="line">	//用于启动了auth的凭证信息集合</span><br><span class="line">	credentials   *credentials</span><br><span class="line"></span><br><span class="line">	sync.RWMutex</span><br><span class="line"></span><br><span class="line">	//随机工具，用于随机打乱集群节点顺序，无序选择节点</span><br><span class="line">	rand          *rand.Rand</span><br><span class="line"></span><br><span class="line">	//节点选择模式</span><br><span class="line">	selectionMode EndpointSelectionMode</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">//一个函数类型，该函数用于返回实现了发送http请求接口的类</span><br><span class="line">type httpClientFactory func(url.URL) httpClient</span><br><span class="line"></span><br><span class="line">//节点选择模式</span><br><span class="line">type EndpointSelectionMode int</span><br><span class="line">const (</span><br><span class="line">	</span><br><span class="line">	//随机节点模式</span><br><span class="line">	EndpointSelectionRandom EndpointSelectionMode = iota</span><br><span class="line"></span><br><span class="line">	//leader节点优先模式</span><br><span class="line">	EndpointSelectionPrioritizeLeader</span><br><span class="line">)</span><br></pre></td></tr></table></figure>
+<p>&emsp;&emsp;该httpClusterClient对包外并不可见，只能通过包的New函数传入自定义的Config来进行构建返回，Config结构如下所示：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><span class="line">//client.go</span><br><span class="line"></span><br><span class="line">type Config struct &#123;</span><br><span class="line">	</span><br><span class="line">	//用于交互的etcd集群节点</span><br><span class="line">	Endpoints []string</span><br><span class="line"></span><br><span class="line">	//用于发送http请求的http transport，如果不传入则使用内部定义的默认transport</span><br><span class="line">	Transport CancelableTransport</span><br><span class="line"></span><br><span class="line">	//检查重定向的函数，如果不传入则使用内部定义的默认检查函数（主要检查一个请求被重定向的次数）</span><br><span class="line">	CheckRedirect CheckRedirectFunc</span><br><span class="line"></span><br><span class="line">	//用于auth的用户名</span><br><span class="line">	Username string</span><br><span class="line"></span><br><span class="line">	//用于auth的密码</span><br><span class="line">	Password string</span><br><span class="line"></span><br><span class="line">	//用户自定义的请求超时设置</span><br><span class="line">	HeaderTimeoutPerRequest time.Duration</span><br><span class="line">	</span><br><span class="line">	//节点选择模式</span><br><span class="line">	SelectionMode EndpointSelectionMode</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>&emsp;&emsp;对于httpClusterClient的clientFactory成员，使用内部的newHTTPClientFactory函数来进行赋值，其入参正是Config中所给出的三个配置；其返回值是一个函数类型，该函数类型的入参为想要向其发送请求的集群节点，返回一个httpClient的接口类（前面Client interface的部分有列出），内部的httpClient接口实现类为redirectFollowingHTTPClient，而其内部还有一个httpClient接口类型成员，而该成员又使用具体的httpClient接口实现类simpleHTTPClient来进行赋值，由此可见redirectFollowingHTTPClient和simpleHTTPClient都实现了httpClient这个接口，从整个设计模式看来，其属于一个装饰器模式，redirectFollowingHTTPClient的Do方法在simpleHTTPClient的Do方法上装饰了一个重定向请求处理的过程，而simpleHTTPClient持有transport来完成最底层的http请求发送。对于clientFactory，其使用之处在于当准备发送一个功能http请求的时候，通过给出想要通信的节点作为入参来实时生成用于发送请求的redirectFollowingHTTPClient，每一个请求发送时的redirectFollowingHTTPClient都是独立的。
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><span class="line">//client.go</span><br><span class="line"></span><br><span class="line">func newHTTPClientFactory(tr CancelableTransport, cr CheckRedirectFunc, headerTimeout time.Duration) httpClientFactory &#123;</span><br><span class="line">	return func(ep url.URL) httpClient &#123;</span><br><span class="line">		return &amp;redirectFollowingHTTPClient&#123;</span><br><span class="line">			checkRedirect: cr,</span><br><span class="line">			client: &amp;simpleHTTPClient&#123;</span><br><span class="line">				transport:     tr,</span><br><span class="line">				endpoint:      ep,</span><br><span class="line">				headerTimeout: headerTimeout,</span><br><span class="line">			&#125;,</span><br><span class="line">		&#125;</span><br><span class="line">	&#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">type redirectFollowingHTTPClient struct &#123;</span><br><span class="line">	client        httpClient</span><br><span class="line">	checkRedirect CheckRedirectFunc</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">type simpleHTTPClient struct &#123;</span><br><span class="line">	transport     CancelableTransport</span><br><span class="line">	endpoint      url.URL</span><br><span class="line">	headerTimeout time.Duration</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>&emsp;&emsp;接下来来分析一下底层的http请求发送流程，由于redirectFollowingHTTPClient和simpleHTTPClient在设计模式上属于装饰器模式，因此我们先从最底层的simpleHTTPClient的Do方法开始分析。
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br></pre></td><td class="code"><pre><span class="line">//client.go</span><br><span class="line"></span><br><span class="line">func (c *simpleHTTPClient) Do(ctx context.Context, act httpAction) (*http.Response, []byte, error) &#123;</span><br><span class="line"></span><br><span class="line">	//构建http请求</span><br><span class="line">	req := act.HTTPRequest(c.endpoint)</span><br><span class="line"></span><br><span class="line">	//此处打印要发送的功能请求对应的curl操作命令（用于查看此时代码实现的功能对应curl是哪些命令）</span><br><span class="line">	if err := printcURL(req); err != nil &#123;</span><br><span class="line">		return nil, nil, err</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	//用于分析请求是否设置了wait参数（watch请求的时候如果没有对应的事件发生则需要进行wait）</span><br><span class="line">	isWait := false</span><br><span class="line">	if req != nil &amp;&amp; req.URL != nil &#123;</span><br><span class="line">		ws := req.URL.Query().Get(&quot;wait&quot;)</span><br><span class="line">		if len(ws) != 0 &#123;</span><br><span class="line">			var err error</span><br><span class="line">			isWait, err = strconv.ParseBool(ws)</span><br><span class="line">			if err != nil &#123;</span><br><span class="line">				return nil, nil, fmt.Errorf(&quot;wrong wait value %s (%v for %+v)&quot;, ws, err, req)</span><br><span class="line">			&#125;</span><br><span class="line">		&#125;</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	/*</span><br><span class="line">	如果没有设置wait参数且HeaderTimeoutPerRequest设置大于0，则设置timeout context，用于响应超时的时候取消请求；</span><br><span class="line">	否则只设置普通的cancel context</span><br><span class="line">	*/</span><br><span class="line">	var hctx context.Context</span><br><span class="line">	var hcancel context.CancelFunc</span><br><span class="line">	if !isWait &amp;&amp; c.headerTimeout &gt; 0 &#123;</span><br><span class="line">		hctx, hcancel = context.WithTimeout(ctx, c.headerTimeout)</span><br><span class="line">	&#125; else &#123;</span><br><span class="line">		hctx, hcancel = context.WithCancel(ctx)</span><br><span class="line">	&#125;</span><br><span class="line">	defer hcancel()</span><br><span class="line"></span><br><span class="line">	/*</span><br><span class="line">	设置http request的超时chan，该函数返回一个匿名函数，匿名函数内部为关闭chan的操作；</span><br><span class="line">	若上层控制需要取消请求时，调用该匿名函数关闭chan，底层即会把请求取消。</span><br><span class="line">	*/</span><br><span class="line">	reqcancel := requestCanceler(c.transport, req)</span><br><span class="line"></span><br><span class="line">	//创建goroutine发送http请求，得到的响应通过rtchan来进行同步结果通知</span><br><span class="line">	rtchan := make(chan roundTripResponse, 1)</span><br><span class="line">	go func() &#123;</span><br><span class="line">		resp, err := c.transport.RoundTrip(req)</span><br><span class="line">		rtchan &lt;- roundTripResponse&#123;resp: resp, err: err&#125;</span><br><span class="line">		close(rtchan)</span><br><span class="line">	&#125;()</span><br><span class="line"></span><br><span class="line">	var resp *http.Response</span><br><span class="line">	var err error</span><br><span class="line"></span><br><span class="line">	//等待请求响应结果通知或者超时（如果没有设置wait参数且HeaderTimeoutPerRequest大于0）</span><br><span class="line">	select &#123;</span><br><span class="line">	case rtresp := &lt;-rtchan:</span><br><span class="line">		resp, err = rtresp.resp, rtresp.err</span><br><span class="line">	case &lt;-hctx.Done():</span><br><span class="line">		// cancel and wait for request to actually exit before continuing</span><br><span class="line">		reqcancel()</span><br><span class="line">		rtresp := &lt;-rtchan</span><br><span class="line">		resp = rtresp.resp</span><br><span class="line">		switch &#123;</span><br><span class="line">		case ctx.Err() != nil:</span><br><span class="line">			err = ctx.Err()</span><br><span class="line">		case hctx.Err() != nil:</span><br><span class="line">			err = fmt.Errorf(&quot;client: endpoint %s exceeded header timeout&quot;, c.endpoint.String())</span><br><span class="line">		default:</span><br><span class="line">			panic(&quot;failed to get error from context&quot;)</span><br><span class="line">		&#125;</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	//函数结束后释放response的body资源</span><br><span class="line">	defer func() &#123;</span><br><span class="line">		if resp != nil &#123;</span><br><span class="line">			resp.Body.Close()</span><br><span class="line">		&#125;</span><br><span class="line">	&#125;()</span><br><span class="line"></span><br><span class="line">	if err != nil &#123;</span><br><span class="line">		return nil, nil, err</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	//创建goroutine去读去响应的body数据，并通过chan来通知读去的结果</span><br><span class="line">	var body []byte</span><br><span class="line">	done := make(chan struct&#123;&#125;)</span><br><span class="line">	go func() &#123;</span><br><span class="line">		body, err = ioutil.ReadAll(resp.Body)</span><br><span class="line">		done &lt;- struct&#123;&#125;&#123;&#125;</span><br><span class="line">	&#125;()</span><br><span class="line"></span><br><span class="line">	//等待响应数据读取结果或外部传入的context的取消操作</span><br><span class="line">	select &#123;</span><br><span class="line">	case &lt;-ctx.Done():</span><br><span class="line">		resp.Body.Close()</span><br><span class="line">		&lt;-done</span><br><span class="line">		return nil, nil, ctx.Err()</span><br><span class="line">	case &lt;-done:</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	return resp, body, err</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>&emsp;&emsp;redirectFollowingHTTPClient在simpleHTTPClient的基础上增加了重定向请求处理的相关操作。
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br></pre></td><td class="code"><pre><span class="line">//client.go</span><br><span class="line"></span><br><span class="line">func (r *redirectFollowingHTTPClient) Do(ctx context.Context, act httpAction) (*http.Response, []byte, error) &#123;</span><br><span class="line">	next := act</span><br><span class="line"></span><br><span class="line">	//此处设置循环用于处理有重定向要求时重新构建重定向请求</span><br><span class="line">	for i := 0; i &lt; 100; i++ &#123;</span><br><span class="line">		if i &gt; 0 &#123;</span><br><span class="line"></span><br><span class="line">			/*</span><br><span class="line">			调用重定向检查函数检查是否符合继续重定向的条件；</span><br><span class="line">			默认的重定向检查函数不允许重定向次数超过10次</span><br><span class="line">			*/</span><br><span class="line">			if err := r.checkRedirect(i); err != nil &#123;</span><br><span class="line">				return nil, nil, err</span><br><span class="line">			&#125;</span><br><span class="line">		&#125;</span><br><span class="line"></span><br><span class="line">		//发送请求</span><br><span class="line">		resp, body, err := r.client.Do(ctx, next)</span><br><span class="line">		if err != nil &#123;</span><br><span class="line">			return nil, nil, err</span><br><span class="line">		&#125;</span><br><span class="line"></span><br><span class="line">		//如果响应的状态码为3XX表示需要重定向</span><br><span class="line">		if resp.StatusCode/100 == 3 &#123;</span><br><span class="line"></span><br><span class="line">			//解析重定向的地址</span><br><span class="line">			hdr := resp.Header.Get(&quot;Location&quot;)</span><br><span class="line">			if hdr == &quot;&quot; &#123;</span><br><span class="line">				return nil, nil, fmt.Errorf(&quot;location header not set&quot;)</span><br><span class="line">			&#125;</span><br><span class="line">			loc, err := url.Parse(hdr)</span><br><span class="line">			if err != nil &#123;</span><br><span class="line">				return nil, nil, fmt.Errorf(&quot;location header not valid URL: %s&quot;, hdr)</span><br><span class="line">			&#125;</span><br><span class="line"></span><br><span class="line">			//重定向action装饰类，装饰上一次的action</span><br><span class="line">			//此处时关于httpAction接口类的一个装饰器模式，后面会进行分析</span><br><span class="line">			next = &amp;redirectedHTTPAction&#123;</span><br><span class="line">				action:   act,</span><br><span class="line">				location: *loc,</span><br><span class="line">			&#125;</span><br><span class="line">			continue</span><br><span class="line">		&#125;</span><br><span class="line"></span><br><span class="line">		//获取到最终结果返回</span><br><span class="line">		return resp, body, nil</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	//继续重定向的条件不满足后返回重定向检查错误</span><br><span class="line">	return nil, nil, errTooManyRedirectChecks</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>&emsp;&emsp;了解完底层的http请求发送后，再继续分析最上层的请求发送调用，即httpClusterClient的方法。
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br><span class="line">116</span><br><span class="line">117</span><br></pre></td><td class="code"><pre><span class="line">//client.go</span><br><span class="line"></span><br><span class="line">func (c *httpClusterClient) Do(ctx context.Context, act httpAction) (*http.Response, []byte, error) &#123;</span><br><span class="line">	action := act</span><br><span class="line"></span><br><span class="line">	//拷贝当前所知的所有集群节点</span><br><span class="line">	c.RLock()</span><br><span class="line">	leps := len(c.endpoints)</span><br><span class="line">	eps := make([]url.URL, leps)</span><br><span class="line">	n := copy(eps, c.endpoints)</span><br><span class="line"></span><br><span class="line">	//选取当前的固定通信节点</span><br><span class="line">	pinned := c.pinned</span><br><span class="line"></span><br><span class="line">	/*</span><br><span class="line">	如果有auth凭证信息则将原http action外装饰一层auth，</span><br><span class="line">	为最终的请求生成附上auth信息</span><br><span class="line">	*/</span><br><span class="line">	if c.credentials != nil &#123;</span><br><span class="line">		action = &amp;authedAction&#123;</span><br><span class="line">			act:         act,</span><br><span class="line">			credentials: *c.credentials,</span><br><span class="line">		&#125;</span><br><span class="line">	&#125;</span><br><span class="line">	c.RUnlock()</span><br><span class="line"></span><br><span class="line">	if leps == 0 &#123;</span><br><span class="line">		return nil, nil, ErrNoEndpoints</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	if leps != n &#123;</span><br><span class="line">		return nil, nil, errors.New(&quot;unable to pick endpoint: copy failed&quot;)</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	var resp *http.Response</span><br><span class="line">	var body []byte</span><br><span class="line">	var err error</span><br><span class="line">	cerr := &amp;ClusterError&#123;&#125;</span><br><span class="line"></span><br><span class="line">	//获取当前请求是否是一次性请求</span><br><span class="line">	isOneShot := ctx.Value(&amp;oneShotCtxValue) != nil</span><br><span class="line"></span><br><span class="line">	/*</span><br><span class="line">	此处for循环从固定的通信节点开始，</span><br><span class="line">	如果当前固定节点可用则使用其进行通信，</span><br><span class="line">	否则则轮询其他节点查找可用的节点并将其当作固定节点</span><br><span class="line">	*/</span><br><span class="line">	for i := pinned; i &lt; leps+pinned; i++ &#123;</span><br><span class="line">		k := i % leps</span><br><span class="line"></span><br><span class="line">		//通过clientFactory获取当前发送请求所用的redirectFollowingHTTPClient</span><br><span class="line">		hc := c.clientFactory(eps[k])</span><br><span class="line"></span><br><span class="line">		//发送请求</span><br><span class="line">		resp, body, err = hc.Do(ctx, action)</span><br><span class="line"></span><br><span class="line">		//请求错误处理</span><br><span class="line">		if err != nil &#123;</span><br><span class="line">			cerr.Errors = append(cerr.Errors, err)</span><br><span class="line"></span><br><span class="line">			//此处错误为上下文错误，即可能是上层的调用终止了当前请求或者设置了超时</span><br><span class="line">			if err == ctx.Err() &#123;</span><br><span class="line">				return nil, nil, ctx.Err()</span><br><span class="line">			&#125;</span><br><span class="line">			if err == context.Canceled || err == context.DeadlineExceeded &#123;</span><br><span class="line">				return nil, nil, err</span><br><span class="line">			&#125;</span><br><span class="line">		&#125; else if resp.StatusCode/100 == 5 &#123;</span><br><span class="line"></span><br><span class="line">			//此处为服务器错误，基本为节点不可用</span><br><span class="line">			switch resp.StatusCode &#123;</span><br><span class="line">			case http.StatusInternalServerError, http.StatusServiceUnavailable:</span><br><span class="line">				// TODO: make sure this is a no leader response</span><br><span class="line">				cerr.Errors = append(cerr.Errors, fmt.Errorf(&quot;client: etcd member %s has no leader&quot;, eps[k].String()))</span><br><span class="line">			default:</span><br><span class="line">				cerr.Errors = append(cerr.Errors, fmt.Errorf(&quot;client: etcd member %s returns server error [%s]&quot;, eps[k].String(), http.StatusText(resp.StatusCode)))</span><br><span class="line">			&#125;</span><br><span class="line">			err = cerr.Errors[0]</span><br><span class="line">		&#125;</span><br><span class="line">		if err != nil &#123;</span><br><span class="line"></span><br><span class="line">			/*</span><br><span class="line">			如果当前请求发送失败</span><br><span class="line">			若该请求不是一次性请求，则更换通信节点尝试发送</span><br><span class="line">			*/</span><br><span class="line">			if !isOneShot &#123;</span><br><span class="line">				continue</span><br><span class="line">			&#125;</span><br><span class="line"></span><br><span class="line">			/*</span><br><span class="line">			如果当前请求发送失败</span><br><span class="line">			若该请求是一次性请求，当前节点已通信失败则其已不能再作为固定节点</span><br><span class="line">			更新固定节点，将下一个节点作为固定节点</span><br><span class="line">			然后不再继续发送请求直接返回</span><br><span class="line">			*/</span><br><span class="line">			c.Lock()</span><br><span class="line">			c.pinned = (k + 1) % leps</span><br><span class="line">			c.Unlock()</span><br><span class="line">			return nil, nil, err</span><br><span class="line">		&#125;</span><br><span class="line"></span><br><span class="line">		/*</span><br><span class="line">		如果当前请求发送成功</span><br><span class="line">		若该请求并不是通过最初的固定通信节点发送请求成功的，则进行固定可用节点更新</span><br><span class="line">		将当前通信成功的节点记录为固定节点</span><br><span class="line">		*/</span><br><span class="line">		if k != pinned &#123;</span><br><span class="line">			c.Lock()</span><br><span class="line">			c.pinned = k</span><br><span class="line">			c.Unlock()</span><br><span class="line">		&#125;</span><br><span class="line">		return resp, body, nil</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	//此处所有集群节点都尝试失败，返回所有记录的错误</span><br><span class="line">	return nil, nil, cerr</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>&emsp;&emsp;分析完httpClusterClient的http请求发送相关的方法后，接着来分析一下它的节点同步相关的方法，即Sync方法和AutoSync方法，而AutoSync方法是在定时器的基础上来调用Sync方法，所以主要分析Sync方法。
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br></pre></td><td class="code"><pre><span class="line">//client.go</span><br><span class="line"></span><br><span class="line">func (c *httpClusterClient) Sync(ctx context.Context) error &#123;</span><br><span class="line"></span><br><span class="line">	//创建member功能的功能类（后续会有api功能类的代码分析）</span><br><span class="line">	mAPI := NewMembersAPI(c)</span><br><span class="line"></span><br><span class="line">	//调用member功能类的List方法列出当前可用节点，返回的是Member类列表</span><br><span class="line">	ms, err := mAPI.List(ctx)</span><br><span class="line">	if err != nil &#123;</span><br><span class="line">		return err</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	//记录节点的url string</span><br><span class="line">	var eps []string</span><br><span class="line">	for _, m := range ms &#123;</span><br><span class="line">		eps = append(eps, m.ClientURLs...)</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	//解析成URL列表</span><br><span class="line">	neps, err := c.parseEndpoints(eps)</span><br><span class="line">	if err != nil &#123;</span><br><span class="line">		return err</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	//默认固定节点为第一个节点</span><br><span class="line">	npin := 0</span><br><span class="line"></span><br><span class="line">	//根据配置的节点选择模式来对节点列表与固定节点做调整</span><br><span class="line">	switch c.selectionMode &#123;</span><br><span class="line"></span><br><span class="line">	//随机节点选择模式</span><br><span class="line">	case EndpointSelectionRandom:</span><br><span class="line">		c.RLock()</span><br><span class="line">		//当前已记录的可用节点和请求查询的当前可用节点进行比较</span><br><span class="line">		eq := endpointsEqual(c.endpoints, neps)</span><br><span class="line">		c.RUnlock()</span><br><span class="line"></span><br><span class="line">		//如果完全一样则直接返回不做任何后续处理</span><br><span class="line">		if eq &#123;</span><br><span class="line">			return nil</span><br><span class="line">		&#125;</span><br><span class="line">		</span><br><span class="line">		//如果不同，则将获取到的当前可用节点列表进行随机打乱</span><br><span class="line">		neps = shuffleEndpoints(c.rand, neps)</span><br><span class="line"></span><br><span class="line">	//leader节点优先模式</span><br><span class="line">	case EndpointSelectionPrioritizeLeader:</span><br><span class="line"></span><br><span class="line">		/*</span><br><span class="line">		发送请求查询当前集群的leader节点，</span><br><span class="line">		该函数里同样创建了member功能类，调用Leader方法发送请求获取leader信息</span><br><span class="line">		*/</span><br><span class="line">		nle, err := c.getLeaderEndpoint(ctx, neps)</span><br><span class="line"></span><br><span class="line">		//leader查询错误则直接返回错误</span><br><span class="line">		if err != nil &#123;</span><br><span class="line">			return ErrNoLeaderEndpoint</span><br><span class="line">		&#125;</span><br><span class="line"></span><br><span class="line">		//在获取的可用节点列表中对比查询leader节点的索引号，将其作为固定节点</span><br><span class="line">		for i, n := range neps &#123;</span><br><span class="line">			if n.String() == nle &#123;</span><br><span class="line">				npin = i</span><br><span class="line">				break</span><br><span class="line">			&#125;</span><br><span class="line">		&#125;</span><br><span class="line">	default:</span><br><span class="line">		return fmt.Errorf(&quot;invalid endpoint selection mode: %d&quot;, c.selectionMode)</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	//将记录节点列表和固定节点更新成获取后所处理过的</span><br><span class="line">	c.Lock()</span><br><span class="line">	defer c.Unlock()</span><br><span class="line">	c.endpoints = neps</span><br><span class="line">	c.pinned = npin</span><br><span class="line"></span><br><span class="line">	return nil</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<h2 id="1-功能api类"><a href="#1-功能api类" class="headerlink" title="1. 功能api类"></a>1. 功能api类</h2><h3 id="key-api类"><a href="#key-api类" class="headerlink" title="key api类"></a>key api类</h3><p>&emsp;&emsp; keys api接口定义：
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><span class="line">//keys.go</span><br><span class="line"></span><br><span class="line">type KeysAPI interface &#123;</span><br><span class="line">	</span><br><span class="line">	//获取相应键值对</span><br><span class="line">	Get(ctx context.Context, key string, opts *GetOptions) (*Response, error)</span><br><span class="line"></span><br><span class="line">	//设置一个键值对，可以配置set选项</span><br><span class="line">	Set(ctx context.Context, key, value string, opts *SetOptions) (*Response, error)</span><br><span class="line"></span><br><span class="line">	//删除一个键值对</span><br><span class="line">	Delete(ctx context.Context, key string, opts *DeleteOptions) (*Response, error)</span><br><span class="line"></span><br><span class="line">	//本质上是一种特定的set，即当所设置的键不存在时set生效</span><br><span class="line">	Create(ctx context.Context, key, value string) (*Response, error)</span><br><span class="line"></span><br><span class="line">	//在一个给定目录下原子地创建一个键</span><br><span class="line">	CreateInOrder(ctx context.Context, dir, value string, opts *CreateInOrderOptions) (*Response, error)</span><br><span class="line"></span><br><span class="line">	//本质上是一种特定的set，即当所设置的键存在时set生效</span><br><span class="line">	Update(ctx context.Context, key, value string) (*Response, error)</span><br><span class="line"></span><br><span class="line">	//生成一个对应key的watcher</span><br><span class="line">	Watcher(key string, opts *WatcherOptions) Watcher</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>&emsp;&emsp; 各种key操作所需的选项参数：
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br></pre></td><td class="code"><pre><span class="line">//keys.go</span><br><span class="line"></span><br><span class="line">type WatcherOptions struct &#123;</span><br><span class="line">	</span><br><span class="line">	//从所指定的revision索引后开始进行watch发送事件</span><br><span class="line">	AfterIndex uint64</span><br><span class="line"></span><br><span class="line">	//是否递归watch，即给定的watch的key底下的子目录发生事件是否也会watch</span><br><span class="line">	Recursive bool</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">type CreateInOrderOptions struct &#123;</span><br><span class="line">	</span><br><span class="line">	//节点的期限值</span><br><span class="line">	TTL time.Duration</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">type SetOptions struct &#123;</span><br><span class="line">	</span><br><span class="line">	/*</span><br><span class="line">	设置当前值，只有所要设置的key其对应的值为指定值时，set才成功</span><br><span class="line">	无设置时忽略，设置目录模式时该字段也被忽略</span><br><span class="line">	*/</span><br><span class="line">	PrevValue string</span><br><span class="line"></span><br><span class="line">	/*</span><br><span class="line">	设置当前revision值，只有当前的revision值为指定值时，set才成功</span><br><span class="line">	设置为0表示没有限制</span><br><span class="line">	*/</span><br><span class="line">	PrevIndex uint64</span><br><span class="line"></span><br><span class="line">	/*</span><br><span class="line">	表示当前键值是否需要存在，</span><br><span class="line">	如果需要存在，则只有指定键值对已存在set才成功</span><br><span class="line">	如果需要不存在，则只有指定键值对不存在set才成功</span><br><span class="line">	*/</span><br><span class="line">	PrevExist PrevExistType</span><br><span class="line"></span><br><span class="line">	//当前节点的期限值</span><br><span class="line">	TTL time.Duration</span><br><span class="line"></span><br><span class="line">	//设置为true表明TTL值能够在不触发watch或更新键值对时被更新，更新时不能设置值	</span><br><span class="line">	Refresh bool</span><br><span class="line"></span><br><span class="line">	//表明当前设置的key是否为dir</span><br><span class="line">	Dir bool</span><br><span class="line"></span><br><span class="line">	//如果设置为true，表明只有当请求失败的时候响应才会包含当前值</span><br><span class="line">	NoValueOnSuccess bool</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">type GetOptions struct &#123;</span><br><span class="line">	</span><br><span class="line">	//是否需要将当前节点下的所有子节点都返回</span><br><span class="line">	Recursive bool</span><br><span class="line"></span><br><span class="line">	//获取到的结果是否按字典序排序</span><br><span class="line">	Sort bool</span><br><span class="line"></span><br><span class="line">	/*</span><br><span class="line">	相当于是否需要线性读</span><br><span class="line">	即只有集群大多数节点都确认了commit的键值对才会作为最终结果返回</span><br><span class="line">	*/</span><br><span class="line">	Quorum bool</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">type DeleteOptions struct &#123;</span><br><span class="line">	</span><br><span class="line">	//指定当前值，只有当前键值对为指定值时才delete成功</span><br><span class="line">	PrevValue string</span><br><span class="line"></span><br><span class="line">	//指定当前revision值，只有当前revision值为指定值时才delete成功</span><br><span class="line">	PrevIndex uint64</span><br><span class="line"></span><br><span class="line">	//是否递归删除节点下的所有子节点</span><br><span class="line">	Recursive bool</span><br><span class="line"></span><br><span class="line">	//是否为dir模式删除</span><br><span class="line">	Dir bool</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+
+      
+    </div>
+    
+    
+    
+
+    
+
+    
+      <div>
+        <div style="padding: 10px 0; margin: 20px auto; width: 90%; text-align: center;">
+  <div>你们的支持是我源源不断创作的动力！！！</div>
+  <button id="rewardButton" disable="enable" onclick="var qr = document.getElementById('QR'); if (qr.style.display === 'none') {qr.style.display='block';} else {qr.style.display='none'}">
+    <span>打赏</span>
+  </button>
+  <div id="QR" style="display: none;">
+
+    
+      <div id="wechat" style="display: inline-block">
+        <img id="wechat_qr" src="/uploads/wechatpay.JPG" alt="Ching 微信支付">
+        <p>微信支付</p>
+      </div>
+    
+
+    
+      <div id="alipay" style="display: inline-block">
+        <img id="alipay_qr" src="/uploads/alipay.JPG" alt="Ching 支付宝">
+        <p>支付宝</p>
+      </div>
+    
+
+    
+
+  </div>
+</div>
+
+      </div>
+    
+
+    
+
+    <footer class="post-footer">
+      
+        <div class="post-tags">
+          
+            <a href="/tags/etcd/" rel="tag"># etcd</a>
+          
+            <a href="/tags/client/" rel="tag"># client</a>
+          
+        </div>
+      
+
+      
+      
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+              <a href="/2019/08/29/rtmpSo-Build-import/" rel="next" title="Android NDK开发例程-rtmp的动态库封装以及导入使用">
+                <i class="fa fa-chevron-left"></i> Android NDK开发例程-rtmp的动态库封装以及导入使用
+              </a>
+            
+          </div>
+
+          <span class="post-nav-divider"></span>
+
+          <div class="post-nav-prev post-nav-item">
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+
+    <div class="post-spread">
+      
+    </div>
+  </div>
+
+
+          </div>
+          
+
+
+          
+
+  
+
+
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    
+    <div class="sidebar-inner">
+
+      
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
+            文章目录
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+            站点概览
+          </li>
+        </ul>
+      
+
+      <section class="site-overview-wrap sidebar-panel">
+        <div class="site-overview">
+          <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+            
+              <img class="site-author-image" itemprop="image" src="/uploads/IMG_2745.JPG" alt="Ching">
+            
+              <p class="site-author-name" itemprop="name">Ching</p>
+              <p class="site-description motion-element" itemprop="description">努力便是晴天。</p>
+          </div>
+
+          <nav class="site-state motion-element">
+
+            
+              <div class="site-state-item site-state-posts">
+              
+                <a href="/archives/">
+              
+                  <span class="site-state-item-count">10</span>
+                  <span class="site-state-item-name">日志</span>
+                </a>
+              </div>
+            
+
+            
+              
+              
+              <div class="site-state-item site-state-categories">
+                <a href="/categories/index.html">
+                  <span class="site-state-item-count">6</span>
+                  <span class="site-state-item-name">分类</span>
+                </a>
+              </div>
+            
+
+            
+              
+              
+              <div class="site-state-item site-state-tags">
+                <a href="/tags/index.html">
+                  <span class="site-state-item-count">16</span>
+                  <span class="site-state-item-name">标签</span>
+                </a>
+              </div>
+            
+
+          </nav>
+
+          
+
+          
+            <div class="links-of-author motion-element">
+                
+                  <span class="links-of-author-item">
+                    <a href="https://github.com/ZzIris" target="_blank" title="GitHub">
+                      
+                        <i class="fa fa-fw fa-globe"></i>GitHub</a>
+                  </span>
+                
+            </div>
+          
+
+          
+          
+
+          
+          
+
+          
+
+        </div>
+      </section>
+
+      
+      <!--noindex-->
+        <section class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+              
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#一-前言"><span class="nav-number">1.</span> <span class="nav-text">一. 前言</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#二-概括简述"><span class="nav-number">2.</span> <span class="nav-text">二. 概括简述</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#三-具体分析"><span class="nav-number">3.</span> <span class="nav-text">三. 具体分析</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#1-http-client相关类"><span class="nav-number">3.1.</span> <span class="nav-text">1. http client相关类</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#1-功能api类"><span class="nav-number">3.2.</span> <span class="nav-text">1. 功能api类</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#key-api类"><span class="nav-number">3.2.1.</span> <span class="nav-text">key api类</span></a></li></ol></li></ol></li></ol></div>
+            
+
+          </div>
+        </section>
+      <!--/noindex-->
+      
+
+      
+
+    </div>
+  </aside>
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright">&copy; 2019 &mdash; <span itemprop="copyrightYear">2021</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Ching</span>
+
+  
+</div>
+
+
+  <div class="powered-by">由 <a class="theme-link" target="_blank" href="https://hexo.io">Hexo</a> 强力驱动</div>
+
+
+
+  <span class="post-meta-divider">|</span>
+
+
+
+  <div class="theme-info">主题 &mdash; <a class="theme-link" target="_blank" href="https://github.com/iissnan/hexo-theme-next">NexT.Muse</a> v5.1.4</div>
+
+
+
+
+        
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+
+    
+      <div class="back-to-top">
+        <i class="fa fa-arrow-up"></i>
+        
+      </div>
+    
+
+    
+
+  </div>
+
+  
+
+<script type="text/javascript">
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
+
+
+
+
+
+
+
+
+
+  
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery/index.js?v=2.1.3"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fastclick/lib/fastclick.min.js?v=1.0.6"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery_lazyload/jquery.lazyload.js?v=1.9.7"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fancybox/source/jquery.fancybox.pack.js?v=2.1.5"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/canvas-nest/canvas-nest.min.js"></script>
+  
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/utils.js?v=5.1.4"></script>
+
+  <script type="text/javascript" src="/js/src/motion.js?v=5.1.4"></script>
+
+
+
+  
+  
+
+  
+  <script type="text/javascript" src="/js/src/scrollspy.js?v=5.1.4"></script>
+<script type="text/javascript" src="/js/src/post-details.js?v=5.1.4"></script>
+
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/bootstrap.js?v=5.1.4"></script>
+
+
+
+  
+
+
+  
+
+
+
+
+	
+
+
+
+
+
+  
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+  
+
+  
+
+  
+
+  
+  
+
+  
+  
+    <script type="text/x-mathjax-config">
+      MathJax.Hub.Config({
+        tex2jax: {
+          inlineMath: [ ['$','$'], ["\\(","\\)"]  ],
+          processEscapes: true,
+          skipTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
+        }
+      });
+    </script>
+
+    <script type="text/x-mathjax-config">
+      MathJax.Hub.Queue(function() {
+        var all = MathJax.Hub.getAllJax(), i;
+        for (i=0; i < all.length; i += 1) {
+          all[i].SourceElement().parentNode.className += ' has-jax';
+        }
+      });
+    </script>
+    <script type="text/javascript" src="//cdn.bootcss.com/mathjax/2.7.1/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+  
+
+
+  
+
+  
+
+</body>
+</html>
